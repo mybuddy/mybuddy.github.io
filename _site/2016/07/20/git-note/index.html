@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>git 笔记</title>
+    <meta name="description" content="公司从去年底开始使用git作为版本控制工具，这是当时做的笔记。">
+
+    <link rel="shortcut icon" href="/favicon.ico?" type="image/x-icon">
+    <link rel="icon" href="/favicon.ico?" type="image/x-icon">
+    <link rel="stylesheet" href=" /css/fontawesome/css/font-awesome.min.css ">
+    <link rel="stylesheet" href=" /css/main.css ">
+    <link rel="canonical" href="http://www.felixyan.com/2016/07/20/git-note/">
+    <link rel="alternate" type="application/rss+xml" title="Coding4Fun" href="http://www.felixyan.com /feed.xml ">
+
+
+    <script>
+    // 百度统计代码
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "//hm.baidu.com/hm.js?477cb938720eadca02976a45951fa1a5";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+    </script>
+
+
+    <script>
+    // google analytics
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+      ga('create', 'UA-81272416-1', 'auto');
+      ga('send', 'pageview');
+
+    </script>
+
+</head>
+
+
+  <body>
+
+    <header id="top">
+    <div class="wrapper">
+        <a href="/" class="brand">Coding4Fun</a>
+        <small>Android & PHP</small>
+        <button id="headerMenu" class="menu"><i class="fa fa-bars"></i></button>
+        <nav id="headerNav">
+            <ul>
+                <li>
+                    
+                    <a href="/">
+                    
+                        <i class="fa fa-home"></i>首页
+                    </a>
+                </li>
+
+                
+                    
+                    <li>
+                        
+                        <a href="/archive/">
+                        
+                            <i class="fa fa-archive"></i>归档
+                        </a>
+                    </li>
+                    
+                
+                    
+                    <li>
+                        
+                        <a href="/category/">
+                        
+                            <i class="fa fa-th-list"></i>分类
+                        </a>
+                    </li>
+                    
+                
+                    
+                    <li>
+                        
+                        <a href="/tag/">
+                        
+                            <i class="fa fa-tags"></i>标签
+                        </a>
+                    </li>
+                    
+                
+                    
+                    <li>
+                        
+                        <a href="/about/">
+                        
+                            <i class="fa fa-heart"></i>关于我
+                        </a>
+                    </li>
+                    
+                
+                    
+                
+                    
+                
+                    
+                
+            </ul>
+        </nav>
+    </div>
+</header>
+
+
+        <div class="page clearfix" post>
+    <div class="left">
+        <h1>git 笔记</h1>
+        <div class="label">
+
+            <div class="label-card">
+                <i class="fa fa-calendar"></i>2016-07-20
+            </div>
+
+            <div class="label-card">
+                
+            </div>
+
+            <div class="label-card">
+                
+            </div>
+
+            <div class="label-card">
+            
+
+
+<!-- <span class="point">•</span> -->
+<span class="categories">
+  <i class="fa fa-th-list"></i>
+  
+    
+        <a href="/category/#git" title="Category: git" rel="category">git</a>
+    
+  
+
+  <!-- <span class="point">•</span> -->
+</span>
+
+
+            </div>
+
+            <div class="label-card">
+            
+<!-- <span class="point">•</span> -->
+<span class="pageTag">
+  <i class="fa fa-tags"></i>
+  
+    
+        <!--a href="/tag/#git" title="Tag: git" rel="tag">git</a-->
+        <a href="/tag/#git" title="Tag: git" rel="tag">git</a>
+    
+  
+
+</span>
+
+            </div>
+
+        </div>
+        <hr>
+        <article itemscope itemtype="http://schema.org/BlogPosting">
+        <ul id="markdown-toc">
+  <li><a href="#git" id="markdown-toc-git">1. git基本命令</a>    <ul>
+      <li><a href="#section" id="markdown-toc-section">1.1 基本命令</a></li>
+      <li><a href="#diff" id="markdown-toc-diff">1.2 diff命令</a></li>
+    </ul>
+  </li>
+  <li><a href="#section-1" id="markdown-toc-section-1">2. 本地库与远程库关联的2种方法</a></li>
+  <li><a href="#section-2" id="markdown-toc-section-2">3. 分支</a>    <ul>
+      <li><a href="#section-3" id="markdown-toc-section-3">3.1 分支基本命令</a></li>
+      <li><a href="#section-4" id="markdown-toc-section-4">3.2 冲突</a></li>
+      <li><a href="#section-5" id="markdown-toc-section-5">3.3 保护工作区</a></li>
+    </ul>
+  </li>
+  <li><a href="#section-6" id="markdown-toc-section-6">4. 多人协作的工作模式</a>    <ul>
+      <li><a href="#section-7" id="markdown-toc-section-7">4.1 多人在同一公共分支开发</a></li>
+      <li><a href="#section-8" id="markdown-toc-section-8">4.2 多人在各自私有分支开发</a></li>
+    </ul>
+  </li>
+  <li><a href="#section-9" id="markdown-toc-section-9">5. 远程库</a></li>
+  <li><a href="#tag" id="markdown-toc-tag">6. 标签tag</a></li>
+  <li><a href="#section-10" id="markdown-toc-section-10">7. 撤销命令</a>    <ul>
+      <li><a href="#commit-levelresetcheckoutrevert" id="markdown-toc-commit-levelresetcheckoutrevert">7.1 commit level（reset、checkout、revert）</a></li>
+      <li><a href="#file-levelresetcheckout" id="markdown-toc-file-levelresetcheckout">7.2 file level（reset、checkout）</a></li>
+    </ul>
+  </li>
+  <li><a href="#section-11" id="markdown-toc-section-11">8. 撤销的正确姿势</a></li>
+  <li><a href="#section-12" id="markdown-toc-section-12">9. 其他</a></li>
+  <li><a href="#section-13" id="markdown-toc-section-13">10. 参考</a></li>
+</ul>
+
+<p>公司从去年底开始使用git作为版本控制工具，这是当时做的笔记。</p>
+
+<h2 id="git">1. git基本命令</h2>
+
+<h3 id="section">1.1 基本命令</h3>
+
+<ul>
+  <li><code class="highlighter-rouge">git init</code><br />
+创建本地git仓库</li>
+  <li><code class="highlighter-rouge">git status</code><br />
+查看git状态</li>
+  <li><code class="highlighter-rouge">git add 文件1 [文件2...文件n]</code><br />
+添加一个/多个文件到暂存区。<code class="highlighter-rouge">git add .</code>添加所有改动的文件到暂存区</li>
+  <li><code class="highlighter-rouge">git rm 文件1 [文件2...文件n]</code><br />
+删除一个或多个文件，也可先在资源管理器或命令行中删除，git会发现有文件被删除</li>
+  <li><code class="highlighter-rouge">git commit -m '提交说明'</code><br />
+将暂存区的代码提交到版本库</li>
+  <li><code class="highlighter-rouge">git log</code><br />
+查看commit记录</li>
+  <li><code class="highlighter-rouge">git log --pretty=oneline --abbrev-commit</code><br />
+查看commit记录（单行，commit_id缩略）</li>
+  <li><code class="highlighter-rouge">git reflog</code><br />
+查看命令记录</li>
+</ul>
+
+<h3 id="diff">1.2 diff命令</h3>
+
+<ul>
+  <li><code class="highlighter-rouge">git diff</code><br />
+查看工作区和暂存区之间的差异（a.暂存区，b.工作区）</li>
+  <li><code class="highlighter-rouge">git diff --cached</code><br />
+查看暂存区和上次commit之间的差异（a.上次commit，b.暂存区)</li>
+  <li><code class="highlighter-rouge">git diff HEAD</code><br />
+查看工作区和上次commit之间的差异（a.上次commit，b.工作区）</li>
+</ul>
+
+<p>以上3个命令后都可接具体的文件/目录，以查看指定文件/目录的差异，如<code class="highlighter-rouge">git diff 文件</code>。
+另，以上3个命令后都可接–stat以查看全局改动，如<code class="highlighter-rouge">git diff --stat</code>。</p>
+
+<h2 id="section-1">2. 本地库与远程库关联的2种方法</h2>
+
+<ul>
+  <li>本地已有仓库
+    <ol>
+      <li><code class="highlighter-rouge">git remote add origin git@server-name:path/repo-name.git</code><br />
+ 把一个已有的本地仓库关联到远程库（origin是远程库的默认叫法，可以改成别的）</li>
+      <li><code class="highlighter-rouge">git push -u origin master</code><br />
+ 第一次推送master分支的所有内容（-u参数，git不但会把本地的master分支内容推送到远程新的master分支，还会把本地的master分支和远程的master分支关联起来）</li>
+      <li><code class="highlighter-rouge">git push origin master</code><br />
+ 本地提交后，推送最新修改到远程库</li>
+    </ol>
+  </li>
+  <li>本地没有仓库</li>
+  <li><code class="highlighter-rouge">git clone git@github.com:mybuddy/gitskills.git</code><br />
+ 从远程库克隆</li>
+</ul>
+
+<h2 id="section-2">3. 分支</h2>
+
+<h3 id="section-3">3.1 分支基本命令</h3>
+
+<ul>
+  <li><code class="highlighter-rouge">git branch</code><br />
+查看分支</li>
+  <li><code class="highlighter-rouge">git branch &lt;name&gt;</code><br />
+创建分支</li>
+  <li><code class="highlighter-rouge">git checkout &lt;name&gt;</code><br />
+切换分支</li>
+  <li><code class="highlighter-rouge">git checkout -b &lt;name&gt;</code><br />
+创建+切换分支</li>
+  <li><code class="highlighter-rouge">git merge &lt;name&gt;</code><br />
+合并某分支到当前分支</li>
+  <li><code class="highlighter-rouge">git branch -d &lt;name&gt;</code><br />
+删除分支</li>
+  <li><code class="highlighter-rouge">git branch -D &lt;name&gt;</code><br />
+删除一个没有被合并过的分支（强行删除）</li>
+  <li><code class="highlighter-rouge">git log --graph</code><br />
+<code class="highlighter-rouge">git log --graph --pretty=oneline --abbrev-commit</code><br />
+分支合并图</li>
+  <li><code class="highlighter-rouge">git merge —no-ff -m '说明' &lt;name&gt;</code><br />
+不使用fast forward模式合并，合并会产生commit。fast forward模式合并不会产生commit。</li>
+</ul>
+
+<h3 id="section-4">3.2 冲突</h3>
+
+<p>当git自动合并分支遇到冲突时，必须先解决冲突，然后再提交，最后合并完成。</p>
+
+<ol>
+  <li><code class="highlighter-rouge">git merge &lt;name&gt;</code> 尝试合并，遇到冲突，手动解决冲突</li>
+  <li><code class="highlighter-rouge">git add 文件</code> 冲突解决后，add到暂存区</li>
+  <li><code class="highlighter-rouge">git commit</code> 提交</li>
+</ol>
+
+<h3 id="section-5">3.3 保护工作区</h3>
+
+<p>当需临时开分支（如修复一个紧急的bug），而手头工作没有完成时，可以先保护工作现场，再开分支，待bug修复后，恢复工作现场。</p>
+
+<ul>
+  <li><code class="highlighter-rouge">git stash</code><br />
+保护工作现场</li>
+  <li><code class="highlighter-rouge">git stash list</code><br />
+查看工作现场</li>
+  <li><code class="highlighter-rouge">git stash apply</code><br />
+恢复工作现场，stash内容并不删除</li>
+  <li><code class="highlighter-rouge">git stash drop</code><br />
+删除工作现场</li>
+  <li><code class="highlighter-rouge">git stash pop</code><br />
+恢复工作现场的同时，stash内容也一并删除</li>
+  <li><code class="highlighter-rouge">git stash apply stash@{0}</code><br />
+可以多次stash，恢复的时候，先用<code class="highlighter-rouge">git stash list</code>查看，然后恢复指定的stash</li>
+</ul>
+
+<h2 id="section-6">4. 多人协作的工作模式</h2>
+
+<h3 id="section-7">4.1 多人在同一公共分支开发</h3>
+
+<ol>
+  <li>从master拉一个公共分支，多人均在该公共分支开发；</li>
+  <li>试图用<code class="highlighter-rouge">git push origin &lt;branch-name&gt;</code>推送自己的修改；</li>
+  <li>如果推送失败，则因为远程分支比你的本地更新，需要先用<code class="highlighter-rouge">git pull</code>试图合并；</li>
+  <li>如果合并有冲突，则解决冲突，并在本地提交；</li>
+  <li>没有冲突或者解决掉冲突后，再用<code class="highlighter-rouge">git push origin &lt;branch-name&gt;</code>推送就能成功；<br />
+如果<code class="highlighter-rouge">git pull</code>提示<em>“no tracking information”</em>，则说明本地分支和远程分支的链接关系没有创建，使用以下命令关联
+<code class="highlighter-rouge">git branch --track origin/branch-name &lt;branch-name&gt;</code> 或 
+<code class="highlighter-rouge">git branch --set-upstream-to=origin/branch-name &lt;branch-name&gt;</code>。</li>
+</ol>
+
+<p>这种方式，若使用gitlab来合并代码、review代码，仅能在公共分支merge到master分支时，在gitlab上提merge request来完成。</p>
+
+<h3 id="section-8">4.2 多人在各自私有分支开发</h3>
+
+<p>多人在各自私有分支开发，时不时地merge到公共分支，并pull公共分支，merge到自己的分支，最后开发完毕再merge到公共分支。</p>
+
+<blockquote>
+  <p>master分支应该是非常稳定的，也就是仅用来发布新版本，平时不能在上面干活；干活都在dev分支上，也就是说，dev分支是不稳定的，到某个时候，比如1.0版本发布时，再把dev分支合并到master上，在master分支发布1.0版本；你和你的小伙伴们每个人都在dev分支上干活，每个人都有自己的分支，时不时地往dev分支上合并就可以了。</p>
+
+  <p><img src="http://oatuajceb.bkt.clouddn.com/image/git%E5%8D%8F%E4%BD%9C%E6%96%B9%E5%BC%8F.png" alt="" /></p>
+</blockquote>
+
+<p>对于我们使用gitlab来合并代码、review代码的情况，则具体如下：</p>
+
+<ol>
+  <li>从远程库dev分支创建各自的分支dev1、dev2，各自本地除了自己的分支外，还有原分支dev；</li>
+  <li>RD1的本地dev1分支push到远程库dev1后，提merge request到dev分支，结对人review代码并accept merge request；</li>
+  <li>RD2使用 <code class="highlighter-rouge">git pull</code> 更新本地dev分支，然后通过<code class="highlighter-rouge">git merge dev2</code>在本地将dev分支 merge到dev2分支，并push到远程库dev2后，最后merge request到dev分支；</li>
+</ol>
+
+<blockquote>
+  <p>这个过程发生了2次merge，一个是私有分支merge到公共分支，通过在gitlab上提merge request完成；另一个是公共分支merge到私有分支，通过在本地使用<code class="highlighter-rouge">git merge</code>命令完成。</p>
+</blockquote>
+
+<h2 id="section-9">5. 远程库</h2>
+
+<ul>
+  <li><code class="highlighter-rouge">git remote -v</code><br />
+查看远程库信息</li>
+  <li><code class="highlighter-rouge">git checkout -b branch-name origin/branch-name</code><br />
+在本地创建和远程分支对应的分支，本地和远程分支的名称最好一致</li>
+  <li><code class="highlighter-rouge">git branch --track origin/branch-name &lt;branch-name&gt;</code><br />
+<code class="highlighter-rouge">git branch --set-upstream-to=origin/branch-name &lt;branch-name&gt;</code><br />
+建立本地分支和远程分支的关联</li>
+</ul>
+
+<h2 id="tag">6. 标签tag</h2>
+
+<ul>
+  <li><code class="highlighter-rouge">git tag &lt;name&gt; [commit id]</code><br />
+新建一个标签，默认为HEAD，也可以指定一个commit id</li>
+  <li><code class="highlighter-rouge">git tag -a &lt;tagname&gt; -m '说明'</code><br />
+可以指定标签信息</li>
+  <li><code class="highlighter-rouge">git tag -s &lt;tagname&gt; -m '说明'</code><br />
+可以用PGP签名标签</li>
+  <li><code class="highlighter-rouge">git tag</code><br />
+查看所有标签</li>
+  <li><code class="highlighter-rouge">git show &lt;tagname&gt;</code><br />
+查看标签信息</li>
+  <li><code class="highlighter-rouge">git push origin &lt;tagname&gt;</code><br />
+推送一个本地标签</li>
+  <li><code class="highlighter-rouge">git push origin --tags</code><br />
+推送全部未推送过的本地标签</li>
+  <li><code class="highlighter-rouge">git tag -d &lt;tagname&gt;</code><br />
+删除一个本地标签</li>
+  <li><code class="highlighter-rouge">git push origin :refs/tags/&lt;tagname&gt;</code><br />
+删除一个远程标签</li>
+</ul>
+
+<h2 id="section-10">7. 撤销命令</h2>
+
+<p><strong>reset/checkout/revert 区别</strong></p>
+
+<h3 id="commit-levelresetcheckoutrevert">7.1 commit level（reset、checkout、revert）</h3>
+
+<ul>
+  <li><strong>git reset</strong><br />
+用于撤销自己的分支所做的修改。（会修改commit history）</li>
+  <li><code class="highlighter-rouge">git reset --soft HEAD</code><br />
+ 仅修改commit history</li>
+  <li><code class="highlighter-rouge">git reset [--mixed] HEAD</code><br />
+ 仅丢弃暂存区的修改，工作区不受影响（HEAD表示最新的版本）</li>
+  <li>
+    <p><code class="highlighter-rouge">git reset --hard HEAD</code><br />
+ 丢弃暂存区、工作区的修改 HEAD^，HEAD^^，HEAD~5，commit_id（前几位即可，如7位）</p>
+  </li>
+  <li><strong>git checkout</strong><br />
+可能会修改工作区，所以checkout的时候git会提醒</li>
+  <li><code class="highlighter-rouge">git checkout branch_name</code><br />
+ （将HEAD移动到其他分支）用于切换分支</li>
+  <li>
+    <p><code class="highlighter-rouge">git checkout commit_id</code><br />
+ （将HEAD移动到指定的commit，类似于上面）用于快速查看历史版本，但不可直接修改，修改必须拉相应分支</p>
+  </li>
+  <li><strong>git revert</strong> <br />
+用于撤销公共的分支所做的修改。（不会修改commit history，而是新增一个commit）可能会修改工作区，所以revert的时候git会提醒</li>
+  <li><code class="highlighter-rouge">git revert HEAD~2</code><br />
+ （仅撤销HEAD~2所做的修改，并创建一个新的commit）</li>
+</ul>
+
+<h3 id="file-levelresetcheckout">7.2 file level（reset、checkout）</h3>
+
+<ul>
+  <li><strong>git reset</strong></li>
+  <li>
+    <p><code class="highlighter-rouge">git reset HEAD [--] 文件</code><br />
+ –soft、–mixed、–hard参数无效，结果均为仅丢弃暂存区的修改，工作区不受影响</p>
+  </li>
+  <li><strong>git checkout</strong></li>
+  <li><code class="highlighter-rouge">git checkout HEAD~2 [--] 文件</code><br />
+ （HEAD不移动）暂存区不修改，工作区修改，用于快速查看该文件的历史版本（效果类似于commit level的<code class="highlighter-rouge">git reset —hard HEAD~2</code>，但局限于该文件）<br />
+如果checkout一个文件的某版本后，add并commit该文件，则效果类似revert该文件到某版本，不同的是该版本之后的所有修改均被撤销，而revert只会撤销指定版本的修改</li>
+</ul>
+
+<blockquote>
+  <p>注：git命令中的文件、目录前可以加<code class="highlighter-rouge">--</code>以便与参数隔开。如<code class="highlighter-rouge">git checkout HEAD~2 -- 文件</code>。</p>
+</blockquote>
+
+<h2 id="section-11">8. 撤销的正确姿势</h2>
+
+<p>做了无数次试验后，总结的revert的姿势：</p>
+
+<ol>
+  <li><code class="highlighter-rouge">git revert commit_id</code>，然后push，merge request<br />
+优点：可以全局revert<br />
+缺点：只能revert该commit的修改，如果要revert多次commit，则要多次revert最后再push，merge request</li>
+  <li><code class="highlighter-rouge">git checkout commit_id 文件1 文件2 [...文件n]</code>，然后add，commit，push，merge request<br />
+优点：可以revert多次commit<br />
+缺点：必须把要revert的文件一一列出来，不能全局revert</li>
+</ol>
+
+<h2 id="section-12">9. 其他</h2>
+
+<ul>
+  <li><code class="highlighter-rouge">git clone -b &lt;branch&gt; &lt;remote_repo&gt;</code><br />
+git clone默认会把仓库中的所有分支都复制到本地，该命令可仅克隆指定的分支</li>
+</ul>
+
+<h2 id="section-13">10. 参考</h2>
+<p><a href="http://www.liaoxuefeng.com/wiki/0013739516305929606dd18361248578c67b8067c8c017b000">廖雪峰git教程</a></p>
+
+<p><a href="https://www.atlassian.com/git/tutorials/resetting-checking-out-and-reverting/">Reset, Checkout, and Revert</a></p>
+
+
+        </article>
+        <hr>
+
+        
+        
+            
+            
+        
+        
+
+        <div class="post-recent">
+    
+    <div class="pre">
+
+        <p><strong>上一篇</strong> <a href="/2016/07/19/first-post/">第一篇文章</a></p>
+        
+    </div>
+    <div class="nex">
+
+        
+    </div>
+</div>
+
+
+        <h2 id="comments">评论</h2>
+        
+
+
+<div id="disqus_thread"></div>
+<script>
+    /**
+     * RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+     * LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables
+     */
+
+    var disqus_config = function() {
+        this.page.url = 'http://www.felixyan.com/2016/07/20/git-note/'; // Replace PAGE_URL with your page's canonical URL variable
+        this.page.identifier = 'http://www.felixyan.com/2016/07/20/git-note/'; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+    };
+
+    (function() { // DON'T EDIT BELOW THIS LINE
+        var d = document,
+            s = d.createElement('script');
+
+        s.src = '//felixyan.disqus.com/embed.js';
+
+        s.setAttribute('data-timestamp', +new Date());
+        (d.head || d.body).appendChild(s);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript>
+
+
+
+
+    </div>
+    <button class="anchor"><i class="fa fa-anchor"></i></button>
+    <div class="right">
+        <div class="wrap">
+
+            <!-- Content -->
+            <div class="side content">
+                <div>
+                    目录
+                </div>
+                <ul id="content-side" class="content-ul">
+                    <li><a href="#similar_posts">相似文章</a></li>
+                    <li><a href="#comments">评论</a></li>
+                </ul>
+            </div>
+            <!-- 其他div框放到这里 -->
+            <!-- <div class="side">bbbb</div> -->
+        </div>
+    </div>
+</div>
+<script>
+/**
+ * target _blank
+ */
+(function() {
+    var aTags = document.querySelectorAll('article a:not([id])')
+    for (var i = 0; i < aTags.length; i++) {
+        aTags[i].setAttribute('target', '_blank')
+    }
+}());
+</script>
+<script src="/js/pageContent.js " charset="utf-8"></script>
+
+
+    <footer class="site-footer">
+
+
+    <div class="wrapper">
+
+        <p class="description">
+             踏踏实实，不可浮躁 
+        </p>
+        <p class="contact">
+            Contact me at:  
+            <a href="mailto:buddycanfei#163.com" title="email"><i class="fa fa-envelope-o" aria-hidden="true"></i></a>        
+        </p>
+        <p>
+            本站总访问量<span id="busuanzi_value_site_pv"></span>次，本站访客数<span id="busuanzi_value_site_uv"></span>人次，本文总阅读量<span id="busuanzi_value_page_pv"></span>次
+        </p>
+        <p class="power">
+            <span>
+                Site powered by <a href="https://jekyllrb.com/">Jekyll</a> & <a href="https://pages.github.com/">Github Pages</a>.
+            </span>
+            <span>
+                Theme designed by <a href="https://github.com/Gaohaoyang">HyG</a>.
+            </span>
+        </p>
+    </div>
+</footer>
+<script async src="https://dn-lbstatics.qbox.me/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+    <div class="back-to-top">
+    <a href="#top" class="scroll">
+        <i class="fa fa-arrow-up" aria-hidden="true"></i>
+    </a>
+</div>
+
+    <script src=" /js/main.js " charset="utf-8"></script>
+    <script src=" /js/scroll.min.js " charset="utf-8"></script>
+  </body>
+
+</html>
