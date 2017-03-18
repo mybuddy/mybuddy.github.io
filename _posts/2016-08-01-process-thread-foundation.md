@@ -9,7 +9,11 @@ tags: 并发编程 java
 * content
 {:toc}
 
-# 进程、线程基础
+进程、线程的基本概念，及Java中进程、线程的使用。
+
+
+
+
 
 ## 1. 基本概念
 
@@ -121,7 +125,9 @@ Runtime.exec方法中调用了ProcessBuilder.start方法。**Runtime，即运行
 ## 参考
 
 [Java多线程基础：进程和线程之由来](http://www.cnblogs.com/dolphin0520/p/3910667.html)
+
 [Java并发编程：如何创建线程？](http://www.cnblogs.com/dolphin0520/p/3913517.html)
+
 [Java并发编程：Thread类的使用](http://www.cnblogs.com/dolphin0520/p/3920357.html)
 
 
