@@ -1,0 +1,591 @@
+<!doctype html>
+<html class="no-js" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+    
+  并发容器、阻塞队列 - yanfei's tick tock
+  
+  </title>
+  
+  
+  <link href="atom.xml" rel="alternate" title="yanfei's tick tock" type="application/atom+xml">
+    <link rel="stylesheet" href="asset/css/foundation.min.css" />
+    <link rel="stylesheet" href="asset/css/docs.css" />
+    <script src="asset/js/vendor/modernizr.js"></script>
+    <script src="asset/js/vendor/jquery.js"></script>
+  <script src="asset/highlightjs/highlight.pack.js"></script>
+  <link href="asset/highlightjs/styles/github.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script>hljs.initHighlightingOnLoad();</script>
+<script type="text/javascript">
+  function before_search(){
+    var searchVal = 'site:www.felixyan.com ' + document.getElementById('search_input').value;
+    document.getElementById('search_q').value = searchVal;
+    return true;
+  }
+</script>
+  </head>
+  <body class="antialiased hide-extras">
+    
+    <div class="marketing off-canvas-wrap" data-offcanvas>
+      <div class="inner-wrap">
+
+
+<nav class="top-bar docs-bar hide-for-small" data-topbar>
+
+
+  <section class="top-bar-section">
+  <div class="row">
+      <div style="position: relative;width:100%;"><div style="position: absolute; width:100%;">
+        <ul id="main-menu" class="left">
+        
+        <li id=""><a target="_self" href="index.html">Home</a></li>
+        
+        <li id=""><a target="_self" href="archives.html">Archives</a></li>
+        
+        <li id=""><a target="_self" href="about.html">About</a></li>
+        
+        </ul>
+
+        <ul class="right" id="search-wrap">
+          <li>
+<form target="_blank" onsubmit="return before_search();" action="http://google.com/search" method="get">
+    <input type="hidden" id="search_q" name="q" value="" />
+    <input tabindex="1" type="search" id="search_input"  placeholder="Search"/>
+</form>
+</li>
+          </ul>
+      </div></div>
+  </div>
+  </section>
+
+</nav>
+
+        <nav class="tab-bar show-for-small">
+  <a href="javascript:void(0)" class="left-off-canvas-toggle menu-icon">
+    <span> &nbsp; yanfei's tick tock</span>
+  </a>
+</nav>
+
+<aside class="left-off-canvas-menu">
+      <ul class="off-canvas-list">
+       
+       <li><a href="index.html">HOME</a></li>
+    <li><a href="archives.html">Archives</a></li>
+    <li><a href="about.html">ABOUT</a></li>
+
+    <li><label>Categories</label></li>
+
+        
+            <li><a href="%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B.html">并发编程</a></li>
+        
+            <li><a href="TCP/IP%20HTTP%E5%8D%8F%E8%AE%AE.html">TCP/IP HTTP协议</a></li>
+        
+            <li><a href="%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F.html">设计模式</a></li>
+        
+            <li><a href="Android.html">Android</a></li>
+         
+
+      </ul>
+    </aside>
+
+<a class="exit-off-canvas" href="#"></a>
+
+
+        <section id="main-content" role="main" class="scroll-container">
+        
+       
+
+ <script type="text/javascript">
+  $(function(){
+    $('#menu_item_index').addClass('is_active');
+  });
+</script>
+<div class="row">
+  <div class="large-8 medium-8 columns">
+      <div class="markdown-body article-wrap">
+       <div class="article">
+          
+          <h1>并发容器、阻塞队列</h1>
+     
+        <div class="read-more clearfix">
+          <span class="date">2017/2/12 23:39 下午</span>
+
+          <span>posted in&nbsp;</span> 
+          
+              <span class="posted-in"><a href='%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B.html'>并发编程</a></span>
+           
+         
+          <span class="comments">
+            
+
+            
+              &nbsp;<a  class="ds-thread-count" data-thread-key="14869139713567.html" data-count-type="comments" href="14869139713567.html#ds-thread"></a>
+            
+          </span>
+
+        </div>
+      </div><!-- article -->
+
+      <div class="article-content">
+      <h2 id="toc_0">1. 并发容器</h2>
+
+<h3 id="toc_1">1.1 并发容器种类</h3>
+
+<p>jdk 1.5 引入了并发容器，同之前的同步容器相比，主要解决了2个问题：<br/>
+1. 根据具体场景，尽量避免synchronized，提供并发性<br/>
+2. 定义了一些并发安全的复合操作，保证并发环境下的迭代不会出错（但未必每次看到的都是最新的数据）</p>
+
+<span id="more"></span><!-- more -->
+
+<ul>
+<li><strong>ConcurrentHashMap：</strong>替代同步Map（Collections.synchronized(new HashMap())），分段锁；增加了原子复合操作，如putIfAbsent()、replace()；</li>
+<li><strong>CopyOnWriteArrayList：</strong>替代List；迭代过程保证不出错，除了加锁，另一种方法是克隆容器对象；</li>
+<li>CopyOnWriteArraySet：替代Set；</li>
+<li>ConcurrentLinkedQueue：先进先出队列，非阻塞；</li>
+<li>ConcurrentSkipListMap：替代SoredMap（Collections.synchronizedMap(new TreeMap())）；</li>
+<li>ConcurrentSkipListSet：替代SoredSet（Collections.synchronizedSet(new TreeMap())）；</li>
+</ul>
+
+<h3 id="toc_2">1.2 ConcurrentHashMap</h3>
+
+<h4 id="toc_3">ConcurrentHashMap内部结构</h4>
+
+<p><img src="http://pic.yupoo.com/goldendoc/Ba4GCFe1/nuEZ0.png?_=3932905" alt="ConcurrentHashMap结构"/></p>
+
+<p>结构：Segment数组+HashEntry链表数组，Segment是一种可重入锁ReentrantLock。<br/>
+读操作：定位1个元素需要2次Hash操作，第一次Hash定位到Segment，第二次Hash定位到元素所在链表的头部。<br/>
+写操作：只对元素所在的Segment加锁，如需扩容，则只对Segment扩容。</p>
+
+<p>Segment结构。</p>
+
+<pre><code class="language-java">static final class Segment&lt;K,V&gt; extends ReentrantLock implements Serializable {
+    transient volatile int count; // Segment中元素的数量
+    transient int modCount; // 对table大小造成影响的操作数量（如put、remove）
+    transient int threshold; // 阈值，Segment中元素超过该阈值后会对Segment扩容
+    transient volatile HashEntry&lt;K,V&gt;[] table; // 链表数组，每个元素代表了一个链表的头部
+    final float loadFactor; // 负载因子，用于确定threshold
+}
+</code></pre>
+
+<p>HashEntry结构。</p>
+
+<pre><code class="language-java">static final class HashEntry&lt;K,V&gt; {
+    final K key;
+    final int hash;
+    volatile V value;
+    final HashEntry&lt;K,V&gt; next;
+}
+</code></pre>
+
+<h4 id="toc_4">初始化</h4>
+
+<p>Segment、HashEntry的个数都是2的n次方个，便于执行Hash计算。</p>
+
+<h4 id="toc_5">get操作</h4>
+
+<p>get操作的高效之处在于整个get过程不需要加锁，除非读到的值是空的才会加锁重读。不加锁的原因是get方法中使用的共享变量都是volatile的，保证线程间的可见性。</p>
+
+<p>ConcurrentHashMap的get方法、segmentFor方法。</p>
+
+<pre><code class="language-java">public V get(Object key) {
+  int hash = hash(key.hashCode()); // 对hashCode再哈希，为了减少哈希冲突
+  return segmentFor(hash).get(key, hash);
+}
+</code></pre>
+
+<pre><code class="language-java">final Segment&lt;K,V&gt; segmentFor(int hash) {
+    return segments[(hash &gt;&gt;&gt; segmentShift) &amp; segmentMask];
+}
+</code></pre>
+
+<p>Segment的get方法。</p>
+
+<pre><code class="language-java">V get(Object key, int hash) {
+    if (count != 0) { // read-volatile
+        HashEntry&lt;K,V&gt; e = getFirst(hash);
+        while (e != null) {
+            if (e.hash == hash &amp;&amp; key.equals(e.key)) {
+                V v = e.value;
+                if (v != null)
+                    return v;
+                return readValueUnderLock(e); // recheck 读到空值，加锁重读
+            }
+            e = e.next;
+        }
+    }
+    return null;
+}
+</code></pre>
+
+<h4 id="toc_6">put操作</h4>
+
+<p>需要加锁完成。如果Segment中的元素数量超过了阈值，需要对Segment扩容，再进行rehash。如果找到要更新的元素，则更新其value，否则生成一个新的HashEntry加到Segment头部。</p>
+
+<h4 id="toc_7">remove操作</h4>
+
+<p>先确定要删除的元素位置，不过删除的方式不是将待删除元素前面一个元素的next指向后一个元素，因为HashEntry中的next是final的，一经赋值不可修改。所以定位到待删除元素的位置后，将待删除元素前的元素复制一遍，然后一个个重新接到链表上。</p>
+
+<p><img src="http://pic.yupoo.com/goldendoc/Ba3OfBv8/medish.jpg?_=3932905" alt="remove元素前"/></p>
+
+<p>如上图，现在要删除元素3，删除后链表如下图。<br/>
+<img src="http://pic.yupoo.com/goldendoc/Ba3OfPQE/medish.jpg?_=3932905" alt="remove元素后"/></p>
+
+<pre><code class="language-java">// All entries following removed node can stay
+// in list, but all preceding ones need to be
+// cloned.
+++modCount;
+HashEntry&lt;K,V&gt; newFirst = e.next;
+for (HashEntry&lt;K,V&gt; p = first; p != e; p = p.next)
+    newFirst = new HashEntry&lt;K,V&gt;(p.key, p.hash, newFirst, p.value);
+tab[index] = newFirst;
+</code></pre>
+
+<h4 id="toc_8">size操作</h4>
+
+<p>不加锁统计2遍各个Segment的大小，如果2次统计modCount没有发生变化，则返回第一次统计值，否则加锁统计一次所有Segment的大小。</p>
+
+<h4 id="toc_9">参考</h4>
+
+<p><a href="http://www.cnblogs.com/dolphin0520/p/3932905.html">Java并发编程：并发容器之ConcurrentHashMap（转载）</a><br/>
+<a href="http://ifeve.com/ConcurrentHashMap/">聊聊并发（四）深入分析ConcurrentHashMap</a></p>
+
+<h3 id="toc_10">1.3 CopyOnWriteArrayList</h3>
+
+<p>读的时候不加锁，写的时候加锁，用于读多写少的并发场景。</p>
+
+<p>回顾2个常识：<br/>
+1. Java中“=”操作只是将引用与对象关联，线程A将线程B中的引用指向另一个对象，他们之间不会发生ConcurrentModificationException。<br/>
+2. Java中2个引用指向同一个对象，若引用A指向另一个对象，则不会影响引用B，引用B仍然指向原来的对象。</p>
+
+<p><strong>复制数组使用的是Arrays.copyOf方法</strong>，其内部调用的System.arraycopy的native方法。对于数组元素为引用类型的，则只在新数组中将元素引用指向旧数组相应的元素；对于非引用类型，则会将旧数组中的元素复制到新数组。参考<a href="https://stackoverflow.com/questions/18351726/does-arrays-copyof-produce-a-shallow-or-a-deep-copy#38104094">StackOverflow上的回答</a></p>
+
+<p>注意点：<br/>
+1. 减少写时扩容开销，根据实际需要初始化CopyOnWriteMap的大小<br/>
+2. 使用批量添加，因为每次添加容器都会进行复制</p>
+
+<p>缺点：<br/>
+1. 内存占用问题<br/>
+2. 数据一致性问题</p>
+
+<h4 id="toc_11">参考</h4>
+
+<p><a href="http://www.cnblogs.com/dolphin0520/p/3938914.html">Java并发编程：并发容器之CopyOnWriteArrayList（转载）</a><br/>
+<a href="http://m.blog.csdn.net/article/details?id=8494675">java CopyOnWriteArrayList的使用</a></p>
+
+<h2 id="toc_12">2. 阻塞队列</h2>
+
+<h3 id="toc_13">非阻塞队列</h3>
+
+<p>PriorityQueue、LinkedList。</p>
+
+<p>主要方法：<br/>
+add(E e)：插入队尾。成功，返回true，失败（队列已满），抛异常；<br/>
+remove()：移除队首元素。成功，返回true，失败（队列空），抛异常；<br/>
+<strong>offer(E e)：</strong>插入队尾。成功，返回true，失败（队列已满），返回false；<br/>
+<strong>poll()：</strong>移除并获取队首元素。成功，返回队首元素，失败返回null；<br/>
+<strong>peek：</strong>获取队首元素。成功，返回队首元素，失败返回null。</p>
+
+<p>建议使用offer、poll、peek，因为可以根据返回值判断操作是否成功。非阻塞队列中的方法都没有进行同步措施。</p>
+
+<h3 id="toc_14">阻塞队列</h3>
+
+<p>ArrayBlockingQueue：基于数组，先进先出，有界。创建时需指定容量大小，并且可指定公平性非公平性。<br/>
+LinkedBlockingQueue：基于链表，先进先出，有界。创建时若不指定容量大小，则默认大小为Integer.MAX_VALUE。<br/>
+PriorityBlockingQueue：按照元素优先级排序，并按照优先级出队。无界（即容量无上限）。<br/>
+DelayQueue：基于PriorityQueue，延时阻塞队列，无界。无界阻塞队列，插入数据时永远不会被阻塞，只有取数据时才会被阻塞。</p>
+
+<p>主要方法：<br/>
+包含了非阻塞队列的5个方法，且均进行了同步措施。除此之外，还提供了以下4个方法：<br/>
+<strong>put(E e)：</strong>向队尾存入元素，若队列满，则等待；<br/>
+<strong>take()：</strong>取队首元素，若队列空，则等待；<br/>
+<strong>offer(E e, long timeout, TimeUnit unit)：</strong>向队尾存入元素，若队列满，则等待一定时间，若超时仍未成功，则返回false，否则返回true；<br/>
+<strong>poll(long timeout, TimeUnit unit)：</strong>取队首元素，若队列空，则等待一定时间，若超时仍未取到，则返回null，否则返回取得的元素。</p>
+
+<h3 id="toc_15">阻塞队列原理</h3>
+
+<p>以ArrayBlockingQueue为例，</p>
+
+<pre><code class="language-java">public class ArrayBlockingQueue&lt;E&gt; extends AbstractQueue&lt;E&gt;
+implements BlockingQueue&lt;E&gt;, java.io.Serializable {
+ 
+    private static final long serialVersionUID = -817911632652898426L;
+     
+    /** The queued items  */
+    private final E[] items;
+    /** items index for next take, poll or remove */
+    private int takeIndex;
+    /** items index for next put, offer, or add. */
+    private int putIndex;
+    /** Number of items in the queue */
+    private int count;
+     
+    /*
+    * Concurrency control uses the classic two-condition algorithm
+    * found in any textbook.
+    */
+     
+    /** Main lock guarding all access */
+    private final ReentrantLock lock;
+    /** Condition for waiting takes */
+    private final Condition notEmpty;
+    /** Condition for waiting puts */
+    private final Condition notFull;
+}
+</code></pre>
+
+<h3 id="toc_16">参考</h3>
+
+<p><a href="http://www.cnblogs.com/dolphin0520/p/3932906.html">Java并发编程：阻塞队列</a></p>
+
+
+    
+
+      </div>
+
+      <div class="row">
+        <div class="large-6 columns">
+        <p class="text-left" style="padding:15px 0px;">
+      
+          <a href="14869801736885.html" 
+          title="Previous Post: 进程、线程基础">&laquo; 进程、线程基础</a>
+      
+        </p>
+        </div>
+        <div class="large-6 columns">
+      <p class="text-right" style="padding:15px 0px;">
+      
+          <a  href="14868914180518.html" 
+          title="Next Post: ConcurrentModificationException异常">ConcurrentModificationException异常 &raquo;</a>
+      
+      </p>
+        </div>
+      </div>
+      <div class="comments-wrap">
+        <div class="share-comments">
+          <!-- JiaThis Button BEGIN -->
+<div class="jiathis_style_32x32">
+	<a class="jiathis_button_qzone"></a>
+	<a class="jiathis_button_tsina"></a>
+	<a class="jiathis_button_tqq"></a>
+	<a class="jiathis_button_weixin"></a>
+	<a class="jiathis_button_renren"></a>
+	<a href="http://www.jiathis.com/share" class="jiathis jiathis_txt jtico jtico_jiathis" target="_blank"></a>
+	<a class="jiathis_counter_style"></a>
+</div>
+<script type="text/javascript" src="http://v3.jiathis.com/code/jia.js" charset="utf-8"></script>
+<!-- JiaThis Button END -->
+
+<!-- 多说评论框 start -->
+<div class="ds-thread"></div>
+<!-- 多说评论框 end -->
+<!-- 多说公共JS代码 start (一个网页只需插入一次) -->
+<script type="text/javascript">
+var duoshuoQuery = {short_name:"felixyan"};
+	(function() {
+		var ds = document.createElement('script');
+		ds.type = 'text/javascript';ds.async = true;
+		ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+		ds.charset = 'UTF-8';
+		(document.getElementsByTagName('head')[0] 
+		 || document.getElementsByTagName('body')[0]).appendChild(ds);
+	})();
+</script>
+<!-- 多说公共JS代码 end -->
+
+          
+
+          
+              <div class="ds-thread" data-thread-key="14869139713567.html" data-url="http://www.felixyan.com/14869139713567.html" data-title="并发容器、阻塞队列"></div>
+          
+        </div>
+      </div>
+    </div><!-- article-wrap -->
+  </div><!-- large 8 -->
+
+
+
+
+ <div class="large-4 medium-4 columns">
+  <div class="hide-for-small">
+    <div id="sidebar" class="sidebar">
+          <div id="site-info" class="site-info">
+            
+                <div class="site-a-logo"><img src="media/14898339548134/%E6%B5%B7%E7%BB%B5bob.png" /></div>
+            
+                <h1>yanfei's tick tock</h1>
+                <div class="site-des">我的点滴总结</div>
+                <div class="social">
+
+
+
+
+
+
+
+
+
+<a target="_blank" class="github" target="_blank" href="https://github.com/mybuddy/" title="GitHub">GitHub</a>
+<a target="_blank" class="email" href="mailto:buddycanfei#163.com" title="Email">Email</a>
+  <a target="_blank" class="rss" href="atom.xml" title="RSS">RSS</a>
+                
+              	 </div>
+          	</div>
+
+             
+
+              <div id="site-categories" class="side-item ">
+                <div class="side-header">
+                  <h2>Categories</h2>
+                </div>
+                <div class="side-content">
+
+      	<p class="cat-list">
+        
+            <a href="%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B.html"><strong>并发编程</strong></a>
+        
+            <a href="TCP/IP%20HTTP%E5%8D%8F%E8%AE%AE.html"><strong>TCP/IP HTTP协议</strong></a>
+        
+            <a href="%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F.html"><strong>设计模式</strong></a>
+        
+            <a href="Android.html"><strong>Android</strong></a>
+         
+        </p>
+
+
+                </div>
+              </div>
+
+              <div id="site-categories" class="side-item">
+                <div class="side-header">
+                  <h2>Recent Posts</h2>
+                </div>
+                <div class="side-content">
+                <ul class="posts-list">
+	      
+		      
+			      <li class="post">
+			        <a href="14896792625990.html">线程间协作wait/notify、Condition</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14895059011823.html">HTTP协议</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14894862919609.html">UDP、TCP</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14894158003901.html">HTTPS</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14890753595223.html">UML</a>
+			      </li>
+		     
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		   
+		  		</ul>
+                </div>
+              </div>
+        </div><!-- sidebar -->
+      </div><!-- hide for small -->
+</div><!-- large 4 -->
+
+</div><!-- row -->
+
+ <div class="page-bottom clearfix">
+  <div class="row">
+   <p class="copyright">Copyright &copy; 2015
+Powered by <a target="_blank" href="http://www.mweb.im">MWeb</a>,&nbsp; 
+Theme used <a target="_blank" href="http://github.com">GitHub CSS</a>.</p>
+  </div>
+</div>
+
+        </section>
+      </div>
+    </div>
+
+  
+
+
+<script type="text/javascript">
+var duoshuoQuery = {short_name:'felixyan'};
+  (function() {
+    var ds = document.createElement('script');
+    ds.type = 'text/javascript';ds.async = true;
+    ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+    ds.charset = 'UTF-8';
+    (document.getElementsByTagName('head')[0] 
+     || document.getElementsByTagName('body')[0]).appendChild(ds);
+  })();
+  </script>
+    
+
+    <script src="asset/js/foundation.min.js"></script>
+    <script>
+      $(document).foundation();
+      function fixSidebarHeight(){
+        var w1 = $('.markdown-body').height();
+          var w2 = $('#sidebar').height();
+          if (w1 > w2) { $('#sidebar').height(w1); };
+      }
+      $(function(){
+        fixSidebarHeight();
+      })
+      $(window).load(function(){
+          fixSidebarHeight();
+      });
+     
+    </script>
+
+    
+<script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script><script type="text/x-mathjax-config">MathJax.Hub.Config({TeX: { equationNumbers: { autoNumber: "AMS" } }});</script>
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-81272416-1', 'auto');
+  ga('send', 'pageview');
+
+</script>
+
+  </body>
+</html>

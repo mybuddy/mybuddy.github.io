@@ -1,0 +1,418 @@
+<!doctype html>
+<html class="no-js" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+    
+  HTTP协议 - yanfei's tick tock
+  
+  </title>
+  
+  
+  <link href="atom.xml" rel="alternate" title="yanfei's tick tock" type="application/atom+xml">
+    <link rel="stylesheet" href="asset/css/foundation.min.css" />
+    <link rel="stylesheet" href="asset/css/docs.css" />
+    <script src="asset/js/vendor/modernizr.js"></script>
+    <script src="asset/js/vendor/jquery.js"></script>
+  <script src="asset/highlightjs/highlight.pack.js"></script>
+  <link href="asset/highlightjs/styles/github.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script>hljs.initHighlightingOnLoad();</script>
+<script type="text/javascript">
+  function before_search(){
+    var searchVal = 'site:www.felixyan.com ' + document.getElementById('search_input').value;
+    document.getElementById('search_q').value = searchVal;
+    return true;
+  }
+</script>
+  </head>
+  <body class="antialiased hide-extras">
+    
+    <div class="marketing off-canvas-wrap" data-offcanvas>
+      <div class="inner-wrap">
+
+
+<nav class="top-bar docs-bar hide-for-small" data-topbar>
+
+
+  <section class="top-bar-section">
+  <div class="row">
+      <div style="position: relative;width:100%;"><div style="position: absolute; width:100%;">
+        <ul id="main-menu" class="left">
+        
+        <li id=""><a target="_self" href="index.html">Home</a></li>
+        
+        <li id=""><a target="_self" href="archives.html">Archives</a></li>
+        
+        <li id=""><a target="_self" href="about.html">About</a></li>
+        
+        </ul>
+
+        <ul class="right" id="search-wrap">
+          <li>
+<form target="_blank" onsubmit="return before_search();" action="http://google.com/search" method="get">
+    <input type="hidden" id="search_q" name="q" value="" />
+    <input tabindex="1" type="search" id="search_input"  placeholder="Search"/>
+</form>
+</li>
+          </ul>
+      </div></div>
+  </div>
+  </section>
+
+</nav>
+
+        <nav class="tab-bar show-for-small">
+  <a href="javascript:void(0)" class="left-off-canvas-toggle menu-icon">
+    <span> &nbsp; yanfei's tick tock</span>
+  </a>
+</nav>
+
+<aside class="left-off-canvas-menu">
+      <ul class="off-canvas-list">
+       
+       <li><a href="index.html">HOME</a></li>
+    <li><a href="archives.html">Archives</a></li>
+    <li><a href="about.html">ABOUT</a></li>
+
+    <li><label>Categories</label></li>
+
+        
+            <li><a href="%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B.html">并发编程</a></li>
+        
+            <li><a href="TCP/IP%20HTTP%E5%8D%8F%E8%AE%AE.html">TCP/IP HTTP协议</a></li>
+        
+            <li><a href="%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F.html">设计模式</a></li>
+        
+            <li><a href="Android.html">Android</a></li>
+         
+
+      </ul>
+    </aside>
+
+<a class="exit-off-canvas" href="#"></a>
+
+
+        <section id="main-content" role="main" class="scroll-container">
+        
+       
+
+ <script type="text/javascript">
+  $(function(){
+    $('#menu_item_index').addClass('is_active');
+  });
+</script>
+<div class="row">
+  <div class="large-8 medium-8 columns">
+      <div class="markdown-body article-wrap">
+       <div class="article">
+          
+          <h1>HTTP协议</h1>
+     
+        <div class="read-more clearfix">
+          <span class="date">2017/3/14 23:38 下午</span>
+
+          <span>posted in&nbsp;</span> 
+          
+              <span class="posted-in"><a href='TCP/IP%20HTTP%E5%8D%8F%E8%AE%AE.html'>TCP/IP HTTP协议</a></span>
+           
+         
+          <span class="comments">
+            
+
+            
+              &nbsp;<a  class="ds-thread-count" data-thread-key="14895059011823.html" data-count-type="comments" href="14895059011823.html#ds-thread"></a>
+            
+          </span>
+
+        </div>
+      </div><!-- article -->
+
+      <div class="article-content">
+      <h2 id="toc_0">HTTP/1.1</h2>
+
+<p>1.1相比1.0的变化：</p>
+
+<ol>
+<li>Connection: keep-alive 持久连接（默认）</li>
+<li>pipelining 管道机制（同一个TCP连接中，客户端可以同时发送多个请求，但服务端还是按顺序响应）</li>
+<li>Content-Length字段</li>
+<li>Transfer-Encoding: chunked 分块传输编码</li>
+<li>头信息增加了Host字段</li>
+<li>新增了许多动词方法：PUT、PATCH、HEAD、OPTIONS、DELETE。</li>
+</ol>
+
+<span id="more"></span><!-- more -->
+
+<p>缺点：<br/>
+虽然允许复用TCP连接，但数据通信是按次序进行的，可能会出现“队头堵塞”。</p>
+
+<h2 id="toc_1">HTTP/2</h2>
+
+<p>基于SPDY协议。</p>
+
+<p>2相比1.1的变化：</p>
+
+<ol>
+<li>二进制协议，头信息、数据体都是二进制；而1.1头信息肯定是文本，数据体可以是文本也可以是二进制。</li>
+<li>多工。复用TCP连接，在一个连接中，客户端和服务端都可以同时发送多个请求或回应，且不用按照顺序一一对应，避免了“队头堵塞”。</li>
+<li>数据流。每个请求或回应的数据包，称为一个数据流。每个数据流都有一个独一无二的编号。数据流发送到一半的时候，客户端和服务端都可以发送信号取消该数据流。</li>
+<li>头信息压缩。头信息压缩后发送，并且客户端和服务端同时维护一张头信息表，所有字段都会存入该表，生成一个索引号，后续客户端只发送索引号。</li>
+<li>服务器推送。</li>
+</ol>
+
+<h2 id="toc_2">参考</h2>
+
+<p><a href="http://www.ruanyifeng.com/blog/2016/08/http.html">HTTP 协议入门</a><br/>
+<a href="https://hit-alibaba.github.io/interview/basic/network/HTTP.html">HTTP协议</a></p>
+
+
+    
+
+      </div>
+
+      <div class="row">
+        <div class="large-6 columns">
+        <p class="text-left" style="padding:15px 0px;">
+      
+          <a href="14896792625990.html" 
+          title="Previous Post: 线程间协作wait/notify、Condition">&laquo; 线程间协作wait/notify、Condition</a>
+      
+        </p>
+        </div>
+        <div class="large-6 columns">
+      <p class="text-right" style="padding:15px 0px;">
+      
+          <a  href="14894862919609.html" 
+          title="Next Post: UDP、TCP">UDP、TCP &raquo;</a>
+      
+      </p>
+        </div>
+      </div>
+      <div class="comments-wrap">
+        <div class="share-comments">
+          <!-- JiaThis Button BEGIN -->
+<div class="jiathis_style_32x32">
+	<a class="jiathis_button_qzone"></a>
+	<a class="jiathis_button_tsina"></a>
+	<a class="jiathis_button_tqq"></a>
+	<a class="jiathis_button_weixin"></a>
+	<a class="jiathis_button_renren"></a>
+	<a href="http://www.jiathis.com/share" class="jiathis jiathis_txt jtico jtico_jiathis" target="_blank"></a>
+	<a class="jiathis_counter_style"></a>
+</div>
+<script type="text/javascript" src="http://v3.jiathis.com/code/jia.js" charset="utf-8"></script>
+<!-- JiaThis Button END -->
+
+<!-- 多说评论框 start -->
+<div class="ds-thread"></div>
+<!-- 多说评论框 end -->
+<!-- 多说公共JS代码 start (一个网页只需插入一次) -->
+<script type="text/javascript">
+var duoshuoQuery = {short_name:"felixyan"};
+	(function() {
+		var ds = document.createElement('script');
+		ds.type = 'text/javascript';ds.async = true;
+		ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+		ds.charset = 'UTF-8';
+		(document.getElementsByTagName('head')[0] 
+		 || document.getElementsByTagName('body')[0]).appendChild(ds);
+	})();
+</script>
+<!-- 多说公共JS代码 end -->
+
+          
+
+          
+              <div class="ds-thread" data-thread-key="14895059011823.html" data-url="http://www.felixyan.com/14895059011823.html" data-title="HTTP协议"></div>
+          
+        </div>
+      </div>
+    </div><!-- article-wrap -->
+  </div><!-- large 8 -->
+
+
+
+
+ <div class="large-4 medium-4 columns">
+  <div class="hide-for-small">
+    <div id="sidebar" class="sidebar">
+          <div id="site-info" class="site-info">
+            
+                <div class="site-a-logo"><img src="media/14898339548134/%E6%B5%B7%E7%BB%B5bob.png" /></div>
+            
+                <h1>yanfei's tick tock</h1>
+                <div class="site-des">我的点滴总结</div>
+                <div class="social">
+
+
+
+
+
+
+
+
+
+<a target="_blank" class="github" target="_blank" href="https://github.com/mybuddy/" title="GitHub">GitHub</a>
+<a target="_blank" class="email" href="mailto:buddycanfei#163.com" title="Email">Email</a>
+  <a target="_blank" class="rss" href="atom.xml" title="RSS">RSS</a>
+                
+              	 </div>
+          	</div>
+
+             
+
+              <div id="site-categories" class="side-item ">
+                <div class="side-header">
+                  <h2>Categories</h2>
+                </div>
+                <div class="side-content">
+
+      	<p class="cat-list">
+        
+            <a href="%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B.html"><strong>并发编程</strong></a>
+        
+            <a href="TCP/IP%20HTTP%E5%8D%8F%E8%AE%AE.html"><strong>TCP/IP HTTP协议</strong></a>
+        
+            <a href="%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F.html"><strong>设计模式</strong></a>
+        
+            <a href="Android.html"><strong>Android</strong></a>
+         
+        </p>
+
+
+                </div>
+              </div>
+
+              <div id="site-categories" class="side-item">
+                <div class="side-header">
+                  <h2>Recent Posts</h2>
+                </div>
+                <div class="side-content">
+                <ul class="posts-list">
+	      
+		      
+			      <li class="post">
+			        <a href="14896792625990.html">线程间协作wait/notify、Condition</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14895059011823.html">HTTP协议</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14894862919609.html">UDP、TCP</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14894158003901.html">HTTPS</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14890753595223.html">UML</a>
+			      </li>
+		     
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		   
+		  		</ul>
+                </div>
+              </div>
+        </div><!-- sidebar -->
+      </div><!-- hide for small -->
+</div><!-- large 4 -->
+
+</div><!-- row -->
+
+ <div class="page-bottom clearfix">
+  <div class="row">
+   <p class="copyright">Copyright &copy; 2015
+Powered by <a target="_blank" href="http://www.mweb.im">MWeb</a>,&nbsp; 
+Theme used <a target="_blank" href="http://github.com">GitHub CSS</a>.</p>
+  </div>
+</div>
+
+        </section>
+      </div>
+    </div>
+
+  
+
+
+<script type="text/javascript">
+var duoshuoQuery = {short_name:'felixyan'};
+  (function() {
+    var ds = document.createElement('script');
+    ds.type = 'text/javascript';ds.async = true;
+    ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+    ds.charset = 'UTF-8';
+    (document.getElementsByTagName('head')[0] 
+     || document.getElementsByTagName('body')[0]).appendChild(ds);
+  })();
+  </script>
+    
+
+    <script src="asset/js/foundation.min.js"></script>
+    <script>
+      $(document).foundation();
+      function fixSidebarHeight(){
+        var w1 = $('.markdown-body').height();
+          var w2 = $('#sidebar').height();
+          if (w1 > w2) { $('#sidebar').height(w1); };
+      }
+      $(function(){
+        fixSidebarHeight();
+      })
+      $(window).load(function(){
+          fixSidebarHeight();
+      });
+     
+    </script>
+
+    
+<script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script><script type="text/x-mathjax-config">MathJax.Hub.Config({TeX: { equationNumbers: { autoNumber: "AMS" } }});</script>
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-81272416-1', 'auto');
+  ga('send', 'pageview');
+
+</script>
+
+  </body>
+</html>

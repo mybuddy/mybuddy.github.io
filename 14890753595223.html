@@ -1,0 +1,507 @@
+<!doctype html>
+<html class="no-js" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+    
+  UML - yanfei's tick tock
+  
+  </title>
+  
+  
+  <link href="atom.xml" rel="alternate" title="yanfei's tick tock" type="application/atom+xml">
+    <link rel="stylesheet" href="asset/css/foundation.min.css" />
+    <link rel="stylesheet" href="asset/css/docs.css" />
+    <script src="asset/js/vendor/modernizr.js"></script>
+    <script src="asset/js/vendor/jquery.js"></script>
+  <script src="asset/highlightjs/highlight.pack.js"></script>
+  <link href="asset/highlightjs/styles/github.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <script>hljs.initHighlightingOnLoad();</script>
+<script type="text/javascript">
+  function before_search(){
+    var searchVal = 'site:www.felixyan.com ' + document.getElementById('search_input').value;
+    document.getElementById('search_q').value = searchVal;
+    return true;
+  }
+</script>
+  </head>
+  <body class="antialiased hide-extras">
+    
+    <div class="marketing off-canvas-wrap" data-offcanvas>
+      <div class="inner-wrap">
+
+
+<nav class="top-bar docs-bar hide-for-small" data-topbar>
+
+
+  <section class="top-bar-section">
+  <div class="row">
+      <div style="position: relative;width:100%;"><div style="position: absolute; width:100%;">
+        <ul id="main-menu" class="left">
+        
+        <li id=""><a target="_self" href="index.html">Home</a></li>
+        
+        <li id=""><a target="_self" href="archives.html">Archives</a></li>
+        
+        <li id=""><a target="_self" href="about.html">About</a></li>
+        
+        </ul>
+
+        <ul class="right" id="search-wrap">
+          <li>
+<form target="_blank" onsubmit="return before_search();" action="http://google.com/search" method="get">
+    <input type="hidden" id="search_q" name="q" value="" />
+    <input tabindex="1" type="search" id="search_input"  placeholder="Search"/>
+</form>
+</li>
+          </ul>
+      </div></div>
+  </div>
+  </section>
+
+</nav>
+
+        <nav class="tab-bar show-for-small">
+  <a href="javascript:void(0)" class="left-off-canvas-toggle menu-icon">
+    <span> &nbsp; yanfei's tick tock</span>
+  </a>
+</nav>
+
+<aside class="left-off-canvas-menu">
+      <ul class="off-canvas-list">
+       
+       <li><a href="index.html">HOME</a></li>
+    <li><a href="archives.html">Archives</a></li>
+    <li><a href="about.html">ABOUT</a></li>
+
+    <li><label>Categories</label></li>
+
+        
+            <li><a href="%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B.html">并发编程</a></li>
+        
+            <li><a href="TCP/IP%20HTTP%E5%8D%8F%E8%AE%AE.html">TCP/IP HTTP协议</a></li>
+        
+            <li><a href="%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F.html">设计模式</a></li>
+        
+            <li><a href="Android.html">Android</a></li>
+         
+
+      </ul>
+    </aside>
+
+<a class="exit-off-canvas" href="#"></a>
+
+
+        <section id="main-content" role="main" class="scroll-container">
+        
+       
+
+ <script type="text/javascript">
+  $(function(){
+    $('#menu_item_index').addClass('is_active');
+  });
+</script>
+<div class="row">
+  <div class="large-8 medium-8 columns">
+      <div class="markdown-body article-wrap">
+       <div class="article">
+          
+          <h1>UML</h1>
+     
+        <div class="read-more clearfix">
+          <span class="date">2017/3/10 0:2 上午</span>
+
+          <span>posted in&nbsp;</span> 
+          
+              <span class="posted-in"><a href='%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F.html'>设计模式</a></span>
+           
+         
+          <span class="comments">
+            
+
+            
+              &nbsp;<a  class="ds-thread-count" data-thread-key="14890753595223.html" data-count-type="comments" href="14890753595223.html#ds-thread"></a>
+            
+          </span>
+
+        </div>
+      </div><!-- article -->
+
+      <div class="article-content">
+      <h2 id="toc_0">表示方式</h2>
+
+<p>UML中描述对象和类之间相互关系的方式包括：</p>
+
+<ul>
+<li>依赖（Dependency）。虚线+箭头，指向被依赖元素。<br/>
+<img src="http://images2015.cnblogs.com/blog/285763/201602/285763-20160228232305960-1330516318.jpg" alt="依赖"/></li>
+</ul>
+
+<span id="more"></span><!-- more -->
+
+<ul>
+<li>关联（Association）。实线+箭头，指向被依赖元素。<br/>
+<img src="http://pic002.cnblogs.com/images/2012/285763/2012061315034351.jpg" alt="关联"/></li>
+<li>聚合（Aggregation）。空心菱形+实线+箭头，指向被依赖元素（部分）。
+<img src="http://pic002.cnblogs.com/images/2012/285763/2012061315041541.jpg" alt="聚合"/></li>
+<li>组合（Composition）。实心菱形+实线+箭头，指向被依赖元素（部分）。
+<img src="http://pic002.cnblogs.com/images/2012/285763/2012061315044438.jpg" alt="组合"/></li>
+<li>泛化（Generalization）。实线+空心箭头，指向继承的父类。
+<img src="http://pic002.cnblogs.com/images/2012/285763/2012061315050938.gif" alt="泛化"/></li>
+<li>实现（Realization）。虚线+空心箭头，指向实现的接口。
+<img src="http://pic002.cnblogs.com/images/2012/285763/2012061315052227.gif" alt="实现"/></li>
+</ul>
+
+<h2 id="toc_1">依赖</h2>
+
+<ol>
+<li>依赖是单向的。</li>
+<li>依赖关系在Java/C++语言中体现为<strong>局部变量、方法参数、对静态方法的调用</strong>。</li>
+<li>依赖不具有“拥有关系”，而是一种“相识关系”。</li>
+</ol>
+
+<p>方法参数示例：</p>
+
+<pre><code class="language-java">public class Person
+{
+    void buy(Car car)
+   {
+       ...
+    }
+}
+</code></pre>
+
+<h2 id="toc_2">关联</h2>
+
+<ol>
+<li>关联可以是双向的，也可以是单向的（还有自身关联）。双向关联可以有2个箭头或没有箭头，单向关联有1个箭头。</li>
+<li>在Java/C++中，关联关系通过使用<strong>成员变量</strong>来实现。</li>
+<li>关联表现为“拥有关系”。</li>
+</ol>
+
+<pre><code class="language-java">public class 徒弟
+{  
+
+}
+
+public class 唐僧
+{
+     protected: list&lt;徒弟&gt; tdlist;
+}
+</code></pre>
+
+<h2 id="toc_3">聚合</h2>
+
+<ol>
+<li>聚合关系是关联关系的一种，是强的关联关系。</li>
+<li>聚合是<strong>整体和部分</strong>之间的关系，是一种弱拥有关系，<strong>整体和部分可以有不一样的生命周期</strong>。</li>
+<li>聚合关系也是通过<strong>成员变量</strong>来实现，但关联关系所涉及的2个类处于同一个层次上，而聚合关系2个类处于不同的层次上，一个代表整体，一个代表部分。</li>
+<li>关联与聚合仅从Java/C++语法上无法分辨，需要考察所涉及的类之间的逻辑关系。</li>
+</ol>
+
+<pre><code class="language-java">public class 引擎
+ {
+
+ }
+public class 轮胎
+ {
+
+ }
+public class 汽车
+{
+        protected:引擎 engine;
+        protected:轮胎 tyre[4];
+}
+</code></pre>
+
+<h2 id="toc_4">组合</h2>
+
+<ol>
+<li>组合关系是关联关系的一种，是比聚合关系还要强的关系。</li>
+<li>组合关系中整体与部分拥有相同的生命周期。</li>
+</ol>
+
+<pre><code class="language-java">class 肢
+ {
+ }
+ class 人
+ {
+        protected:  肢   limb[4];
+ }
+</code></pre>
+
+<h2 id="toc_5">泛化</h2>
+
+<p>表示类或接口之间的继承关系。<br/>
+ Java中使用extents关键字。</p>
+
+<h2 id="toc_6">实现</h2>
+
+<p>表示类实现接口。<br/>
+Java中使用implements关键字。</p>
+
+<h2 id="toc_7">几种关系的综合比较</h2>
+
+<p>组合&gt;聚合&gt;关联&gt;依赖</p>
+
+<p>其中依赖（Dependency）的关系最弱，而关联（Association），聚合（Aggregation），组合（Composition）表示的关系依次增强。</p>
+
+<p>换言之关联，聚合，组合都是依赖关系的一种，聚合是表明对象之间的整体与部分关系的关联，而组合是表明整体与部分之间有相同生命周期关系的聚合。</p>
+
+<p>而关联与依赖的关系用一句话概括下来就是，依赖描述了对象之间的调用关系，而关联描述了对象之间的结构关系。</p>
+
+<h2 id="toc_8">参考</h2>
+
+<p><a href="http://www.cnblogs.com/duanxz/archive/2012/06/13/2547801.html">UML类图符号 各种关系说明以及举例</a></p>
+
+
+    
+
+      </div>
+
+      <div class="row">
+        <div class="large-6 columns">
+        <p class="text-left" style="padding:15px 0px;">
+      
+          <a href="14894158003901.html" 
+          title="Previous Post: HTTPS">&laquo; HTTPS</a>
+      
+        </p>
+        </div>
+        <div class="large-6 columns">
+      <p class="text-right" style="padding:15px 0px;">
+      
+          <a  href="14890715392734.html" 
+          title="Next Post: DataSetObservable中关于ConcurrentModificationException异常的避免">DataSetObservable中关于ConcurrentModificationException异常的避免 &raquo;</a>
+      
+      </p>
+        </div>
+      </div>
+      <div class="comments-wrap">
+        <div class="share-comments">
+          <!-- JiaThis Button BEGIN -->
+<div class="jiathis_style_32x32">
+	<a class="jiathis_button_qzone"></a>
+	<a class="jiathis_button_tsina"></a>
+	<a class="jiathis_button_tqq"></a>
+	<a class="jiathis_button_weixin"></a>
+	<a class="jiathis_button_renren"></a>
+	<a href="http://www.jiathis.com/share" class="jiathis jiathis_txt jtico jtico_jiathis" target="_blank"></a>
+	<a class="jiathis_counter_style"></a>
+</div>
+<script type="text/javascript" src="http://v3.jiathis.com/code/jia.js" charset="utf-8"></script>
+<!-- JiaThis Button END -->
+
+<!-- 多说评论框 start -->
+<div class="ds-thread"></div>
+<!-- 多说评论框 end -->
+<!-- 多说公共JS代码 start (一个网页只需插入一次) -->
+<script type="text/javascript">
+var duoshuoQuery = {short_name:"felixyan"};
+	(function() {
+		var ds = document.createElement('script');
+		ds.type = 'text/javascript';ds.async = true;
+		ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+		ds.charset = 'UTF-8';
+		(document.getElementsByTagName('head')[0] 
+		 || document.getElementsByTagName('body')[0]).appendChild(ds);
+	})();
+</script>
+<!-- 多说公共JS代码 end -->
+
+          
+
+          
+              <div class="ds-thread" data-thread-key="14890753595223.html" data-url="http://www.felixyan.com/14890753595223.html" data-title="UML"></div>
+          
+        </div>
+      </div>
+    </div><!-- article-wrap -->
+  </div><!-- large 8 -->
+
+
+
+
+ <div class="large-4 medium-4 columns">
+  <div class="hide-for-small">
+    <div id="sidebar" class="sidebar">
+          <div id="site-info" class="site-info">
+            
+                <div class="site-a-logo"><img src="media/14898339548134/%E6%B5%B7%E7%BB%B5bob.png" /></div>
+            
+                <h1>yanfei's tick tock</h1>
+                <div class="site-des">我的点滴总结</div>
+                <div class="social">
+
+
+
+
+
+
+
+
+
+<a target="_blank" class="github" target="_blank" href="https://github.com/mybuddy/" title="GitHub">GitHub</a>
+<a target="_blank" class="email" href="mailto:buddycanfei#163.com" title="Email">Email</a>
+  <a target="_blank" class="rss" href="atom.xml" title="RSS">RSS</a>
+                
+              	 </div>
+          	</div>
+
+             
+
+              <div id="site-categories" class="side-item ">
+                <div class="side-header">
+                  <h2>Categories</h2>
+                </div>
+                <div class="side-content">
+
+      	<p class="cat-list">
+        
+            <a href="%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B.html"><strong>并发编程</strong></a>
+        
+            <a href="TCP/IP%20HTTP%E5%8D%8F%E8%AE%AE.html"><strong>TCP/IP HTTP协议</strong></a>
+        
+            <a href="%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F.html"><strong>设计模式</strong></a>
+        
+            <a href="Android.html"><strong>Android</strong></a>
+         
+        </p>
+
+
+                </div>
+              </div>
+
+              <div id="site-categories" class="side-item">
+                <div class="side-header">
+                  <h2>Recent Posts</h2>
+                </div>
+                <div class="side-content">
+                <ul class="posts-list">
+	      
+		      
+			      <li class="post">
+			        <a href="14896792625990.html">线程间协作wait/notify、Condition</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14895059011823.html">HTTP协议</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14894862919609.html">UDP、TCP</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14894158003901.html">HTTPS</a>
+			      </li>
+		     
+		  
+		      
+			      <li class="post">
+			        <a href="14890753595223.html">UML</a>
+			      </li>
+		     
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		  
+		      
+		   
+		  		</ul>
+                </div>
+              </div>
+        </div><!-- sidebar -->
+      </div><!-- hide for small -->
+</div><!-- large 4 -->
+
+</div><!-- row -->
+
+ <div class="page-bottom clearfix">
+  <div class="row">
+   <p class="copyright">Copyright &copy; 2015
+Powered by <a target="_blank" href="http://www.mweb.im">MWeb</a>,&nbsp; 
+Theme used <a target="_blank" href="http://github.com">GitHub CSS</a>.</p>
+  </div>
+</div>
+
+        </section>
+      </div>
+    </div>
+
+  
+
+
+<script type="text/javascript">
+var duoshuoQuery = {short_name:'felixyan'};
+  (function() {
+    var ds = document.createElement('script');
+    ds.type = 'text/javascript';ds.async = true;
+    ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+    ds.charset = 'UTF-8';
+    (document.getElementsByTagName('head')[0] 
+     || document.getElementsByTagName('body')[0]).appendChild(ds);
+  })();
+  </script>
+    
+
+    <script src="asset/js/foundation.min.js"></script>
+    <script>
+      $(document).foundation();
+      function fixSidebarHeight(){
+        var w1 = $('.markdown-body').height();
+          var w2 = $('#sidebar').height();
+          if (w1 > w2) { $('#sidebar').height(w1); };
+      }
+      $(function(){
+        fixSidebarHeight();
+      })
+      $(window).load(function(){
+          fixSidebarHeight();
+      });
+     
+    </script>
+
+    
+<script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script><script type="text/x-mathjax-config">MathJax.Hub.Config({TeX: { equationNumbers: { autoNumber: "AMS" } }});</script>
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-81272416-1', 'auto');
+  ga('send', 'pageview');
+
+</script>
+
+  </body>
+</html>

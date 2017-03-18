@@ -1,0 +1,2269 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[yanfei's tick tock]]></title>
+  <link href="http://www.felixyan.com/atom.xml" rel="self"/>
+  <link href="http://www.felixyan.com/"/>
+  <updated>2017-03-19T01:17:48+08:00</updated>
+  <id>http://www.felixyan.com/</id>
+  <author>
+    <name><![CDATA[]]></name>
+    
+  </author>
+  <generator uri="http://www.mweb.im/">MWeb</generator>
+  
+  <entry>
+    <title type="html"><![CDATA[线程间协作wait/notify、Condition]]></title>
+    <link href="http://www.felixyan.com/14896792625990.html"/>
+    <updated>2017-03-16T23:47:42+08:00</updated>
+    <id>http://www.felixyan.com/14896792625990.html</id>
+    <content type="html"><![CDATA[
+<p>线程协作常见的2种方式：wait/notify、Condition。</p>
+
+<span id="more"></span><!-- more -->
+
+<h2 id="toc_0">wait、notify、notifyAll</h2>
+
+<ul>
+<li>wait、notify、notifyAll是本地方法，且为final方法，无法被重写；</li>
+<li>调用某个对象的<strong>wait()方法能让当前线程阻塞</strong>，并且当前线程<strong>必须拥有此对象的monitor</strong>（即锁）；所以<strong>必须在synchronized块或synchronized方法中调用wait()</strong>；</li>
+<li>调用某个对象的<strong>notify()方法能够唤醒一个正在等待这个对象的monitor的线程</strong>，如果有多个线程都在等待这个对象的monitor，则只能唤醒其中一个线程；<strong>必须在synchronized块或synchronized方法中调用notify()、notifyAll()</strong>；</li>
+<li>调用notifyAll()方法能够唤醒所有正在等待这个对象的monitor的线程；</li>
+<li>一个<strong>线程被唤醒不代表立即获取了对象的monitor</strong>，只有调用完notify()或notify()并且<strong>退出synchronized块</strong>，释放对象锁后，其余线程才可获得锁执行。</li>
+</ul>
+
+<h2 id="toc_1">Condition</h2>
+
+<p>在Java 1.5中出现，用来替代传统的Object的wait()、notify()，因其实现线程间协作<strong>更安全和高效</strong>。<strong>阻塞队列实际上使用了Condition来模拟线程间协作。</strong></p>
+
+<ul>
+<li>Condition是个接口，基本的方法就是await()和signal()方法；</li>
+<li>Condition依赖于Lock接口，生成一个Condition的基本代码是lock.newCondition()；</li>
+<li>调用Condition的await()和signal()方法，都必须在lock保护之内，就是说必须在lock.lock()和lock.unlock之间才可以使用；</li>
+<li>Condition的await()对应Object的wait()；Condition的signal()对应Object的notify()；Condition中的signalAll()对应Object的notifyAll()。</li>
+</ul>
+
+<h2 id="toc_2">生产者-消费者模型的实现</h2>
+
+<h3 id="toc_3">使用Object的wait()和notify()</h3>
+
+<pre><code class="language-java">public class Test {
+    private int queueSize = 10;
+    private PriorityQueue&lt;Integer&gt; queue = new PriorityQueue&lt;Integer&gt;(queueSize);
+      
+    public static void main(String[] args)  {
+        Test test = new Test();
+        Producer producer = test.new Producer();
+        Consumer consumer = test.new Consumer();
+          
+        producer.start();
+        consumer.start();
+    }
+      
+    class Consumer extends Thread{
+          
+        @Override
+        public void run() {
+            consume();
+        }
+          
+        private void consume() {
+            while(true){
+                synchronized (queue) {
+                    while(queue.size() == 0){
+                        try {
+                            System.out.println(&quot;队列空，等待数据&quot;);
+                            queue.wait();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                            queue.notify();
+                        }
+                    }
+                    queue.poll();          //每次移走队首元素
+                    queue.notify();
+                    System.out.println(&quot;从队列取走一个元素，队列剩余&quot;+queue.size()+&quot;个元素&quot;);
+                }
+            }
+        }
+    }
+      
+    class Producer extends Thread{
+          
+        @Override
+        public void run() {
+            produce();
+        }
+          
+        private void produce() {
+            while(true){
+                synchronized (queue) {
+                    while(queue.size() == queueSize){
+                        try {
+                            System.out.println(&quot;队列满，等待有空余空间&quot;);
+                            queue.wait();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                            queue.notify();
+                        }
+                    }
+                    queue.offer(1);        //每次插入一个元素
+                    queue.notify();
+                    System.out.println(&quot;向队列取中插入一个元素，队列剩余空间：&quot;+(queueSize-queue.size()));
+                }
+            }
+        }
+    }
+}
+</code></pre>
+
+<h3 id="toc_4">使用Condition</h3>
+
+<pre><code class="language-java">public class Test {
+    private int queueSize = 10;
+    private PriorityQueue&lt;Integer&gt; queue = new PriorityQueue&lt;Integer&gt;(queueSize);
+    private Lock lock = new ReentrantLock();
+    private Condition notFull = lock.newCondition();
+    private Condition notEmpty = lock.newCondition();
+     
+    public static void main(String[] args)  {
+        Test test = new Test();
+        Producer producer = test.new Producer();
+        Consumer consumer = test.new Consumer();
+          
+        producer.start();
+        consumer.start();
+    }
+      
+    class Consumer extends Thread{
+          
+        @Override
+        public void run() {
+            consume();
+        }
+          
+        private void consume() {
+            while(true){
+                lock.lock();
+                try {
+                    while(queue.size() == 0){
+                        try {
+                            System.out.println(&quot;队列空，等待数据&quot;);
+                            notEmpty.await();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    queue.poll();                //每次移走队首元素
+                    notFull.signal();
+                    System.out.println(&quot;从队列取走一个元素，队列剩余&quot;+queue.size()+&quot;个元素&quot;);
+                } finally{
+                    lock.unlock();
+                }
+            }
+        }
+    }
+      
+    class Producer extends Thread{
+          
+        @Override
+        public void run() {
+            produce();
+        }
+          
+        private void produce() {
+            while(true){
+                lock.lock();
+                try {
+                    while(queue.size() == queueSize){
+                        try {
+                            System.out.println(&quot;队列满，等待有空余空间&quot;);
+                            notFull.await();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    queue.offer(1);        //每次插入一个元素
+                    notEmpty.signal();
+                    System.out.println(&quot;向队列取中插入一个元素，队列剩余空间：&quot;+(queueSize-queue.size()));
+                } finally{
+                    lock.unlock();
+                }
+            }
+        }
+    }
+}
+</code></pre>
+
+<h2 id="toc_5">参考</h2>
+
+<p><a href="http://www.cnblogs.com/dolphin0520/p/3920385.html">Java并发编程：线程间协作的两种方式：wait、notify、notifyAll和Condition</a></p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[HTTP协议]]></title>
+    <link href="http://www.felixyan.com/14895059011823.html"/>
+    <updated>2017-03-14T23:38:21+08:00</updated>
+    <id>http://www.felixyan.com/14895059011823.html</id>
+    <content type="html"><![CDATA[
+<h2 id="toc_0">HTTP/1.1</h2>
+
+<p>1.1相比1.0的变化：</p>
+
+<ol>
+<li>Connection: keep-alive 持久连接（默认）</li>
+<li>pipelining 管道机制（同一个TCP连接中，客户端可以同时发送多个请求，但服务端还是按顺序响应）</li>
+<li>Content-Length字段</li>
+<li>Transfer-Encoding: chunked 分块传输编码</li>
+<li>头信息增加了Host字段</li>
+<li>新增了许多动词方法：PUT、PATCH、HEAD、OPTIONS、DELETE。</li>
+</ol>
+
+<span id="more"></span><!-- more -->
+
+<p>缺点：<br/>
+虽然允许复用TCP连接，但数据通信是按次序进行的，可能会出现“队头堵塞”。</p>
+
+<h2 id="toc_1">HTTP/2</h2>
+
+<p>基于SPDY协议。</p>
+
+<p>2相比1.1的变化：</p>
+
+<ol>
+<li>二进制协议，头信息、数据体都是二进制；而1.1头信息肯定是文本，数据体可以是文本也可以是二进制。</li>
+<li>多工。复用TCP连接，在一个连接中，客户端和服务端都可以同时发送多个请求或回应，且不用按照顺序一一对应，避免了“队头堵塞”。</li>
+<li>数据流。每个请求或回应的数据包，称为一个数据流。每个数据流都有一个独一无二的编号。数据流发送到一半的时候，客户端和服务端都可以发送信号取消该数据流。</li>
+<li>头信息压缩。头信息压缩后发送，并且客户端和服务端同时维护一张头信息表，所有字段都会存入该表，生成一个索引号，后续客户端只发送索引号。</li>
+<li>服务器推送。</li>
+</ol>
+
+<h2 id="toc_2">参考</h2>
+
+<p><a href="http://www.ruanyifeng.com/blog/2016/08/http.html">HTTP 协议入门</a><br/>
+<a href="https://hit-alibaba.github.io/interview/basic/network/HTTP.html">HTTP协议</a></p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[UDP、TCP]]></title>
+    <link href="http://www.felixyan.com/14894862919609.html"/>
+    <updated>2017-03-14T18:11:31+08:00</updated>
+    <id>http://www.felixyan.com/14894862919609.html</id>
+    <content type="html"><![CDATA[
+<h2 id="toc_0">UDP（用户数据报协议）</h2>
+
+<h3 id="toc_1">UDP协议的特点</h3>
+
+<p>UDP协议只在IP协议上增加了很少的功能，即复用、分用、差错检测功能。</p>
+
+<span id="more"></span><!-- more -->
+
+<ul>
+<li><strong>UDP是无连接的。</strong></li>
+<li>UDP使用尽最大努力交付。</li>
+<li><strong>UDP面向报文。</strong></li>
+<li>UDP没有拥塞控制，保证了应用的实时性。</li>
+<li>UDP支持一对一、一对多、多对一、多对多的交互通信。</li>
+<li><strong>UDP的首部开销小，只有8个字节，而TCP首部有20个字节。</strong></li>
+</ul>
+
+<h3 id="toc_2">UDP协议的首部</h3>
+
+<p><img src="http://upload-images.jianshu.io/upload_images/53611-e21163a2c7e45f99.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="UDP协议的首部"/></p>
+
+<h3 id="toc_3">UDP协议的典型应用</h3>
+
+<ul>
+<li>适合于这样的进程：需要简单的请求-响应通信，较少考虑流量控制、差错控制。</li>
+<li>适合于内部具有流量控制和差错控制机制的进程，如TFTP。</li>
+<li>适合用于多播。</li>
+<li>常用语交互实时应用，避免接收报文延时。</li>
+<li>用于管理进程，如SNMP。</li>
+</ul>
+
+<h2 id="toc_4">TCP（传输控制协议）</h2>
+
+<h3 id="toc_5">TCP协议的特点</h3>
+
+<ul>
+<li>面向连接的协议。</li>
+<li>每条TCP连接只能有2个端点，只能是点对点的。TCP的端点叫做套接字，由“ip:port”或“ip;port”构成。</li>
+<li>提供可靠交付的服务。</li>
+<li>提供全双工通信。</li>
+<li>面向字节流，但传输的数据单元是报文段。</li>
+</ul>
+
+<h3 id="toc_6">TCP协议的首部</h3>
+
+<p><img src="http://upload-images.jianshu.io/upload_images/53611-da2d1badf7d86d0f.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="TCP协议的首部"/></p>
+
+<h3 id="toc_7">TCP可靠传输的实现</h3>
+
+<p><img src="http://upload-images.jianshu.io/upload_images/53611-513ed37715453ab6.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="TCP可靠传输的实现"/></p>
+
+<h4 id="toc_8">缓存与窗口</h4>
+
+<p><img src="http://upload-images.jianshu.io/upload_images/53611-bc546eeed4d20b2f.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="缓存与窗口"/></p>
+
+<h4 id="toc_9">超时重传机制</h4>
+
+<p>TCP每发送一个报文段，就对这个报文段设置一次计时器。只要达到计时器设置的重传时间还没有收到确认，就要重传这个报文段。</p>
+
+<h4 id="toc_10">选择确认SACK</h4>
+
+<p>若收到的报文段无差错，只是未按序号，中间还缺少一些序号的数据，采用选择确认的方法来传送缺少的数据，而不重传已经正确接收到的数据。</p>
+
+<h3 id="toc_11">TCP的流量控制与拥塞控制</h3>
+
+<p>流量控制：<strong>点对点通信量的控制。利用滑动窗口机制实现。</strong><br/>
+拥塞控制：放在过多的数据注入到网络中。4种算法：慢开始、拥塞避免、快重传和快恢复。</p>
+
+<h3 id="toc_12">TCP三次握手（建立）、四次挥手（终止）</h3>
+
+<p><img src="http://images.cnblogs.com/cnblogs_com/ttltry-air/201208/201208201734409538.png" alt="三次握手"/></p>
+
+<p><img src="http://images.cnblogs.com/cnblogs_com/ttltry-air/201208/201208201734418392.png" alt="四次挥手"/></p>
+
+<h2 id="toc_13">参考</h2>
+
+<p><a href="http://www.cnblogs.com/ttltry-air/archive/2012/08/20/2647898.html">HTTPS工作原理和TCP握手机制</a><br/>
+<a href="http://www.jianshu.com/p/43a25804b2e8">TCP和UDP协议</a></p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[HTTPS]]></title>
+    <link href="http://www.felixyan.com/14894158003901.html"/>
+    <updated>2017-03-13T22:36:40+08:00</updated>
+    <id>http://www.felixyan.com/14894158003901.html</id>
+    <content type="html"><![CDATA[
+<h2 id="toc_0">HTTPS原理</h2>
+
+<p><img src="http://pic002.cnblogs.com/images/2012/38542/2012072310244445.png" alt="HTTPS原理"/></p>
+
+<span id="more"></span><!-- more -->
+
+<p><img src="http://images.cnblogs.com/cnblogs_com/ttltry-air/201208/201208201734403507.png" alt="HTTPS通信时序图"/></p>
+
+<p>握手使用<strong>非对称加密</strong>、Hash算法，握手完成后使用<strong>对称加密</strong>传输的内容。</p>
+
+<h3 id="toc_1">握手过程</h3>
+
+<ol>
+<li>浏览器将自己支持的一套加密规则发送给网站。 </li>
+<li>网站从中选出一组加密算法与HASH算法，并将自己的身份信息以证书的形式发回给浏览器。证书里面包含了网站地址，加密公钥，以及证书的颁发机构等信息。 </li>
+<li>浏览器获得网站证书之后浏览器要做以下工作：<br/>
+
+<ul>
+<li>验证证书的合法性（颁发证书的机构是否合法，证书中包含的网站地址是否与正在访问的地址一致等），如果证书受信任，则浏览器栏里面会显示一个小锁头，否则会给出证书不受信的提示。<br/></li>
+<li>如果证书受信任，或者是用户接受了不受信的证书，浏览器会生成一串随机数的密码作为对称密钥，并用证书中提供的公钥加密。<br/></li>
+<li>使用约定好的HASH算法计算握手消息，并使用生成的随机数对消息进行加密，最后将之前生成的所有信息发送给网站。 </li>
+</ul></li>
+<li>网站接收浏览器发来的数据之后要做以下的操作：<br/>
+
+<ul>
+<li>使用自己的私钥将信息解密取出密码，使用密码解密浏览器发来的握手消息，并验证HASH是否与浏览器发来的一致。<br/></li>
+<li>使用密码加密一段握手消息，发送给浏览器。<br/></li>
+</ul></li>
+<li>浏览器解密并计算握手消息的HASH，如果与服务端发来的HASH一致，此时握手过程结束，之后所有的通信数据将由之前浏览器生成的随机密码并利用对称加密算法进行加密。</li>
+</ol>
+
+<h3 id="toc_2">HTTPS一般使用的加密与HASH算法</h3>
+
+<ul>
+<li>非对称加密算法：RSA，DSA/DSS </li>
+<li>对称加密算法：AES，RC4，3DES </li>
+<li>HASH算法：MD5，SHA1，SHA256</li>
+</ul>
+
+<h2 id="toc_3">劫持分类</h2>
+
+<p><img src="https://blog-10039692.file.myqcloud.com/1486471476410_5533_1486471477594.png" alt="劫持分类"/></p>
+
+<h2 id="toc_4">HTTPS为什么能很好地解决链路劫持</h2>
+
+<ol>
+<li>身份认证<br/>
+<img src="https://blog-10039692.file.myqcloud.com/1486471569259_8625_1486471569506.png" alt="身份认证"/></li>
+<li>内容加密<br/>
+<img src="https://blog-10039692.file.myqcloud.com/1486471621111_7034_1486471621290.png" alt="内容加密"/></li>
+<li>一致性校验<br/>
+<img src="https://blog-10039692.file.myqcloud.com/1486471674398_2270_1486471675064.png" alt="一致性校验"/></li>
+</ol>
+
+<h2 id="toc_5">HTTPS普及之痛</h2>
+
+<ol>
+<li>慢
+
+<ul>
+<li>网络耗时</li>
+<li>计算耗时</li>
+</ul></li>
+<li>贵
+
+<ul>
+<li>服务器成本（HTTPS私钥计算会导致服务器性能急剧下降）</li>
+<li>证书成本</li>
+<li>开发和运维成本</li>
+</ul></li>
+</ol>
+
+<h2 id="toc_6">参考</h2>
+
+<p><a href="https://www.qcloud.com/community/article/207618001486449512">HTTPS 协议深度解析，为什么小程序开发者需要关注</a><br/>
+<a href="http://www.cnblogs.com/zhuqil/archive/2012/07/23/2604572.html">图解HTTPS</a><br/>
+<a href="http://www.cnblogs.com/ttltry-air/archive/2012/08/20/2647898.html">HTTPS工作原理和TCP握手机制</a></p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[UML]]></title>
+    <link href="http://www.felixyan.com/14890753595223.html"/>
+    <updated>2017-03-10T00:02:39+08:00</updated>
+    <id>http://www.felixyan.com/14890753595223.html</id>
+    <content type="html"><![CDATA[
+<h2 id="toc_0">表示方式</h2>
+
+<p>UML中描述对象和类之间相互关系的方式包括：</p>
+
+<ul>
+<li>依赖（Dependency）。虚线+箭头，指向被依赖元素。<br/>
+<img src="http://images2015.cnblogs.com/blog/285763/201602/285763-20160228232305960-1330516318.jpg" alt="依赖"/></li>
+</ul>
+
+<span id="more"></span><!-- more -->
+
+<ul>
+<li>关联（Association）。实线+箭头，指向被依赖元素。<br/>
+<img src="http://pic002.cnblogs.com/images/2012/285763/2012061315034351.jpg" alt="关联"/></li>
+<li>聚合（Aggregation）。空心菱形+实线+箭头，指向被依赖元素（部分）。
+<img src="http://pic002.cnblogs.com/images/2012/285763/2012061315041541.jpg" alt="聚合"/></li>
+<li>组合（Composition）。实心菱形+实线+箭头，指向被依赖元素（部分）。
+<img src="http://pic002.cnblogs.com/images/2012/285763/2012061315044438.jpg" alt="组合"/></li>
+<li>泛化（Generalization）。实线+空心箭头，指向继承的父类。
+<img src="http://pic002.cnblogs.com/images/2012/285763/2012061315050938.gif" alt="泛化"/></li>
+<li>实现（Realization）。虚线+空心箭头，指向实现的接口。
+<img src="http://pic002.cnblogs.com/images/2012/285763/2012061315052227.gif" alt="实现"/></li>
+</ul>
+
+<h2 id="toc_1">依赖</h2>
+
+<ol>
+<li>依赖是单向的。</li>
+<li>依赖关系在Java/C++语言中体现为<strong>局部变量、方法参数、对静态方法的调用</strong>。</li>
+<li>依赖不具有“拥有关系”，而是一种“相识关系”。</li>
+</ol>
+
+<p>方法参数示例：</p>
+
+<pre><code class="language-java">public class Person
+{
+    void buy(Car car)
+   {
+       ...
+    }
+}
+</code></pre>
+
+<h2 id="toc_2">关联</h2>
+
+<ol>
+<li>关联可以是双向的，也可以是单向的（还有自身关联）。双向关联可以有2个箭头或没有箭头，单向关联有1个箭头。</li>
+<li>在Java/C++中，关联关系通过使用<strong>成员变量</strong>来实现。</li>
+<li>关联表现为“拥有关系”。</li>
+</ol>
+
+<pre><code class="language-java">public class 徒弟
+{  
+
+}
+
+public class 唐僧
+{
+     protected: list&lt;徒弟&gt; tdlist;
+}
+</code></pre>
+
+<h2 id="toc_3">聚合</h2>
+
+<ol>
+<li>聚合关系是关联关系的一种，是强的关联关系。</li>
+<li>聚合是<strong>整体和部分</strong>之间的关系，是一种弱拥有关系，<strong>整体和部分可以有不一样的生命周期</strong>。</li>
+<li>聚合关系也是通过<strong>成员变量</strong>来实现，但关联关系所涉及的2个类处于同一个层次上，而聚合关系2个类处于不同的层次上，一个代表整体，一个代表部分。</li>
+<li>关联与聚合仅从Java/C++语法上无法分辨，需要考察所涉及的类之间的逻辑关系。</li>
+</ol>
+
+<pre><code class="language-java">public class 引擎
+ {
+
+ }
+public class 轮胎
+ {
+
+ }
+public class 汽车
+{
+        protected:引擎 engine;
+        protected:轮胎 tyre[4];
+}
+</code></pre>
+
+<h2 id="toc_4">组合</h2>
+
+<ol>
+<li>组合关系是关联关系的一种，是比聚合关系还要强的关系。</li>
+<li>组合关系中整体与部分拥有相同的生命周期。</li>
+</ol>
+
+<pre><code class="language-java">class 肢
+ {
+ }
+ class 人
+ {
+        protected:  肢   limb[4];
+ }
+</code></pre>
+
+<h2 id="toc_5">泛化</h2>
+
+<p>表示类或接口之间的继承关系。<br/>
+ Java中使用extents关键字。</p>
+
+<h2 id="toc_6">实现</h2>
+
+<p>表示类实现接口。<br/>
+Java中使用implements关键字。</p>
+
+<h2 id="toc_7">几种关系的综合比较</h2>
+
+<p>组合&gt;聚合&gt;关联&gt;依赖</p>
+
+<p>其中依赖（Dependency）的关系最弱，而关联（Association），聚合（Aggregation），组合（Composition）表示的关系依次增强。</p>
+
+<p>换言之关联，聚合，组合都是依赖关系的一种，聚合是表明对象之间的整体与部分关系的关联，而组合是表明整体与部分之间有相同生命周期关系的聚合。</p>
+
+<p>而关联与依赖的关系用一句话概括下来就是，依赖描述了对象之间的调用关系，而关联描述了对象之间的结构关系。</p>
+
+<h2 id="toc_8">参考</h2>
+
+<p><a href="http://www.cnblogs.com/duanxz/archive/2012/06/13/2547801.html">UML类图符号 各种关系说明以及举例</a></p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[DataSetObservable中关于ConcurrentModificationException异常的避免]]></title>
+    <link href="http://www.felixyan.com/14890715392734.html"/>
+    <updated>2017-03-09T22:58:59+08:00</updated>
+    <id>http://www.felixyan.com/14890715392734.html</id>
+    <content type="html"><![CDATA[
+<pre><code class="language-java">public class DataSetObservable extends Observable&lt;DataSetObserver&gt; {
+    public void notifyChanged() {
+        synchronized(mObservers) {
+            // since onChanged() is implemented by the app, it could do anything, including
+            // removing itself from {@link mObservers} - and that could cause problems if
+            // an iterator is used on the ArrayList {@link mObservers}.
+            // to avoid such problems, just march thru the list in the reverse order.
+            for (int i = mObservers.size() - 1; i &gt;= 0; i--) {
+                mObservers.get(i).onChanged();
+            }
+        }
+    }
+    ...
+}    
+</code></pre>
+
+<span id="more"></span><!-- more -->
+
+<p>之前版本的代码</p>
+
+<pre><code class="language-java">synchronized (mObservers) {
+        for (DataSetObserver observer : mObservers) {
+            observer.onInvalidated();
+        }
+}
+</code></pre>
+
+<p>java中foreach方式遍历使用了Iterator迭代器，出现ConcurrentModificationException的原因是因为在通过Iterator遍历时直接调用了集合类的remove方法等，导致modCount不一致。如果遍历、remove都使用Iterator或者都使用for，就不会有这个问题。</p>
+
+<h2 id="toc_0">参考</h2>
+
+<p><a href="http://stackoverflow.com/questions/12777308/how-to-deal-with-concurrentmodificationexception-while-doing-swapcursor">How to deal with ConcurrentModificationException while doing swapCursor()?</a><br/>
+<a href="http://stackoverflow.com/questions/85190/how-does-the-java-for-each-loop-work">How does the Java for each loop work?</a></p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Broadcasts]]></title>
+    <link href="http://www.felixyan.com/14890173008895.html"/>
+    <updated>2017-03-09T07:55:00+08:00</updated>
+    <id>http://www.felixyan.com/14890173008895.html</id>
+    <content type="html"><![CDATA[
+<h2 id="toc_0">接收广播</h2>
+
+<h3 id="toc_1">在manifest文件中声明receiver</h3>
+
+<pre><code class="language-xml">&lt;receiver android:name=&quot;.MyBroadcastReceiver&quot;  android:exported=&quot;true&quot;&gt;
+    &lt;intent-filter&gt;
+        &lt;action android:name=&quot;android.intent.action.BOOT_COMPLETED&quot;/&gt;
+        &lt;action android:name=&quot;android.intent.action.INPUT_METHOD_CHANGED&quot; /&gt;
+    &lt;/intent-filter&gt;
+&lt;/receiver&gt;
+</code></pre>
+
+<span id="more"></span><!-- more -->
+
+<pre><code class="language-java">public class MyBroadcastReceiver extends BroadcastReceiver {
+    private static final String TAG = &quot;MyBroadcastReceiver&quot;;
+    @Override
+    public void onReceive(Context context, Intent intent) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(&quot;Action: &quot; + intent.getAction() + &quot;\n&quot;);
+        sb.append(&quot;URI: &quot; + intent.toUri(Intent.URI_INTENT_SCHEME).toString() + &quot;\n&quot;);
+        String log = sb.toString();
+        Log.d(TAG, log);
+        Toast.makeText(context, log, Toast.LENGTH_LONG).show();
+    }
+}
+</code></pre>
+
+<h3 id="toc_2">通过context注册receiver</h3>
+
+<p>receiver只在组件存活期间有效。<br/>
+不需要receiver时要及时unregister。如在Activity中onCreate()中注册，则在onDestroy()中反注册；在onResume()中注册，则在onPause()中反注册。</p>
+
+<pre><code class="language-java">BroadcastReceiver br = new MyBroadcastReceiver();
+IntentFilter filter = new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION);
+intentFilter.addAction(Intent.ACTION_AIRPLANE_MODE_CHANGED);
+this.registerReceiver(br, filter);
+</code></pre>
+
+<h2 id="toc_3">对进程状态的影响</h2>
+
+<p>receiver所在的进程只在执行onReceive()方法时是前台进程，如果进程中没有运行其他组件，则进程在执行完onReceive()方法后很可能会被系统回收。</p>
+
+<p>在onReceive()中执行异步操作，可以使用goAsync()，或者通过JobScheduler来安排一个JobService。</p>
+
+<pre><code class="language-java">public class MyBroadcastReceiver extends BroadcastReceiver {
+    private static final String TAG = &quot;MyBroadcastReceiver&quot;;
+
+    @Override
+    public void onReceive(final Context context, final Intent intent) {
+        final PendingResult pendingResult = goAsync();
+        AsyncTask&lt;String, Integer, String&gt; asyncTask = new AsyncTask&lt;String, Integer, String&gt;() {
+            @Override
+            protected String doInBackground(String... params) {
+                StringBuilder sb = new StringBuilder();
+                sb.append(&quot;Action: &quot; + intent.getAction() + &quot;\n&quot;);
+                sb.append(&quot;URI: &quot; + intent.toUri(Intent.URI_INTENT_SCHEME).toString() + &quot;\n&quot;);
+                Log.d(TAG, log);
+                // Must call finish() so the BroadcastReceiver can be recycled.
+                pendingResult.finish();
+                return data;
+            }
+        };
+        asyncTask.execute();
+    }
+}
+</code></pre>
+
+<h2 id="toc_4">发送广播</h2>
+
+<ul>
+<li>sendOrderedBroadcast(Intent, String)。串行有序地向receiver发送广播。</li>
+<li>sendBroadcast(Intent)</li>
+<li>LocalBroadcastManager.sendBroadcast</li>
+</ul>
+
+<p>LocalBroadcastManager的主要方法：</p>
+
+<ul>
+<li>registerReceiver()</li>
+<li>unregisterReceiver()</li>
+<li>sendBroadcast()</li>
+</ul>
+
+<h2 id="toc_5">设置权限</h2>
+
+<h3 id="toc_6">发送广播时设置权限</h3>
+
+<p>可以设置系统已有的权限，也可以设置自定义权限（通过<permission>元素）。使用 <code>sendBroadcast(Intent, String)</code> 或者<code>sendOrderedBroadcast(Intent, String, BroadcastReceiver, Handler, int, String, Bundle)</code>。</p>
+
+<pre><code class="language-java">sendBroadcast(new Intent(&quot;com.example.NOTIFY&quot;),
+              Manifest.permission.SEND_SMS);
+</code></pre>
+
+<p>接收该广播时，接收方app需要设置以下权限：</p>
+
+<pre><code class="language-xml">&lt;uses-permission android:name=&quot;android.permission.SEND_SMS&quot;/&gt;
+</code></pre>
+
+<h3 id="toc_7">接收广播时设置权限</h3>
+
+<p>只有设置了该权限的广播才能够向receiver发送广播。</p>
+
+<pre><code class="language-xml">&lt;receiver android:name=&quot;.MyBroadcastReceiver&quot;
+          android:permission=&quot;android.permission.SEND_SMS&quot;&gt;
+    &lt;intent-filter&gt;
+        &lt;action android:name=&quot;android.intent.action.AIRPLANE_MODE&quot;/&gt;
+    &lt;/intent-filter&gt;
+&lt;/receiver&gt;
+</code></pre>
+
+<p>或<br/>
+<code>java<br/>
+IntentFilter filter = new IntentFilter(Intent.ACTION_AIRPLANE_MODE_CHANGED);<br/>
+registerReceiver(receiver, filter, Manifest.permission.SEND_SMS, null );<br/>
+</code></p>
+
+<p>广播发送方需设置以下权限：</p>
+
+<pre><code class="language-xml">&lt;uses-permission android:name=&quot;android.permission.SEND_SMS&quot;/&gt;
+</code></pre>
+
+<h2 id="toc_8">基于安全考虑的最佳实践</h2>
+
+<ol>
+<li>不需要向其他app发送广播时，使用Support Library中的LocalBroadcastManager。</li>
+<li>优先使用context注册receiver。</li>
+<li>限制可以接收到广播的receiver：
+
+<ul>
+<li>广播设置权限；</li>
+<li>Android 4.0及以上，可以对广播setPackage(String)，只向相同包名的app发送广播；</li>
+<li>使用LocalBroadcastManager。</li>
+</ul></li>
+<li>限制receiver能够接收到的广播：
+
+<ul>
+<li>receiver设置权限；</li>
+<li>manifest中设置的receiver，可以设置android:exported为false;</li>
+<li>使用LocalBroadcastManager。</li>
+</ul></li>
+<li>Action的名称需全局唯一。</li>
+<li>不要在onReveive()中做耗时操作，如有需要可以使用子线程或后台Service。</li>
+<li>不要在onReceive()中start activities。</li>
+</ol>
+
+<h2 id="toc_9">参考</h2>
+
+<p><a href="https://developer.android.com/guide/components/broadcasts.html">Broadcasts</a><br/>
+<a href="https://developer.android.com/reference/android/support/v4/content/LocalBroadcastManager.html">LocalBroadcastManager</a></p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Android中的进程和线程]]></title>
+    <link href="http://www.felixyan.com/14889855306753.html"/>
+    <updated>2017-03-08T23:05:30+08:00</updated>
+    <id>http://www.felixyan.com/14889855306753.html</id>
+    <content type="html"><![CDATA[
+<h2 id="toc_0">Android中进程的优先级</h2>
+
+<ol>
+<li>前台进程</li>
+<li>可见进程</li>
+<li>服务进程<br/>
+使用Service可以保证，无论Activity发生什么情况，该操作至少局部“服务进程”的优先级。</li>
+<li>后台进程</li>
+<li>空进程</li>
+</ol>
+
+<span id="more"></span><!-- more -->
+
+<h2 id="toc_1">Android中从其他线程访问UI线程的简单方法</h2>
+
+<ul>
+<li>Activity.runOnUiThread(Runnable)</li>
+<li>View.post(Runnable)</li>
+<li>View.postDelayed(Runnable, long)</li>
+</ul>
+
+<p>示例：</p>
+
+<pre><code class="language-java">public void onClick(View v) {
+    new Thread(new Runnable() {
+        public void run() {
+            final Bitmap bitmap =
+                    loadImageFromNetwork(&quot;http://example.com/image.png&quot;);
+            mImageView.post(new Runnable() {
+                public void run() {
+                    mImageView.setImageBitmap(bitmap);
+                }
+            });
+        }
+    }).start();
+}
+</code></pre>
+
+<h2 id="toc_2">参考</h2>
+
+<p><a href="https://developer.android.com/guide/components/processes-and-threads.html">进程和线程</a></p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[ContentValues、Bundle区别]]></title>
+    <link href="http://www.felixyan.com/14885319299402.html"/>
+    <updated>2017-03-03T17:05:29+08:00</updated>
+    <id>http://www.felixyan.com/14885319299402.html</id>
+    <content type="html"><![CDATA[
+<p>ContentValues用于SQLiteDatebase、ContentResolver。</p>
+
+<span id="more"></span><!-- more -->
+
+<p>实现上的区别：</p>
+
+<ol>
+<li>ContentValues内部使用HashMap存储数据；Bundle继承自BaseBundle，BaseBundle内部使用ArrayMap存储数据,ArrayMap继承自Map，与HashMap相比主要在于内存效率较高，通常用于存储少量数据。</li>
+<li>get数据时，ContentValues返回的是包装类型，Bundle返回的是基本类型；类型转换的方式不同，Bundle是直接进行类型转换，转换异常则返回默认值，ContentValues先尝试直接进行类型转换，转换异常，则判断是否是CharSequence等其他类型，若是则再尝试由该类型进行转换。</li>
+</ol>
+
+<p>Bundle中get方法：</p>
+
+<pre><code class="language-java">public int getInt(String key, int defaultValue) {
+   unparcel();
+   Object o = mMap.get(key);
+   if (o == null) {
+       return defaultValue;
+   }
+   try {
+       return (Integer) o;
+   } catch (ClassCastException e) {
+       typeWarning(key, o, &quot;Integer&quot;, defaultValue, e);
+       return defaultValue;
+   }
+}
+</code></pre>
+
+<p>ContentValues中的get方法：</p>
+
+<pre><code class="language-java">public Float getAsFloat(String key) {
+   Object value = mValues.get(key);
+   try {
+       return value != null ? ((Number) value).floatValue() : null;
+   } catch (ClassCastException e) {
+       if (value instanceof CharSequence) {
+           try {
+               return Float.valueOf(value.toString());
+           } catch (NumberFormatException e2) {
+               Log.e(TAG, &quot;Cannot parse Float value for &quot; + value + &quot; at key &quot; + key);
+               return null;
+           }
+       } else {
+           Log.e(TAG, &quot;Cannot cast value for &quot; + key + &quot; to a Float: &quot; + value, e);
+           return null;
+       }
+   }
+}
+</code></pre>
+
+<pre><code class="language-java">public Boolean getAsBoolean(String key) {
+   Object value = mValues.get(key);
+   try {
+       return (Boolean) value;
+   } catch (ClassCastException e) {
+       if (value instanceof CharSequence) {
+           return Boolean.valueOf(value.toString());
+       } else if (value instanceof Number) {
+           return ((Number) value).intValue() != 0;
+       } else {
+           Log.e(TAG, &quot;Cannot cast value for &quot; + key + &quot; to a Boolean: &quot; + value, e);
+           return null;
+       }
+   }
+}
+</code></pre>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Intent]]></title>
+    <link href="http://www.felixyan.com/14885239249430.html"/>
+    <updated>2017-03-03T14:52:04+08:00</updated>
+    <id>http://www.felixyan.com/14885239249430.html</id>
+    <content type="html"><![CDATA[
+<p>基本用例：</p>
+
+<ol>
+<li>启动Activity
+startActivity()、startActivityForResult() + onActivityResult()</li>
+<li>启动服务
+startService()、bindService()</li>
+<li><p>传递广播<br/>
+<strong>sendBroadcast()、sendOrderedBroadcast()、sendStickyBroadcast()</strong></p>
+
+<span id="more"></span><!-- more --></li>
+</ol>
+
+<h2 id="toc_0">Intent类型</h2>
+
+<ul>
+<li>显式Intent。
+按完全限定类名指定要启动的组件，通常在自己的应用中使用。
+<strong>如果没有在清单文件中为Activity声明任何Intent过滤器，则其只能通过显式Intent启动。</strong></li>
+<li>隐式Intent。
+不指定特定的组件，而是声明要执行的常规操作。
+Android系统通过将Intent内容与设备上其他应用的清单文件中声明的Intent过滤器进行比较，找到匹配的组件。</li>
+</ul>
+
+<p>注：<strong>启动Service时，为确保安全性，应始终使用显式Intent，且不要为Service声明Intent过滤器。</strong>因为使用隐式Intent不能确定哪些Service将响应Intent，且用户无法看到哪些Service已启动。从Android5.0（API 21）起，通过隐式Intent调用bindService()会引发异常。</p>
+
+<h2 id="toc_1">构建Intent</h2>
+
+<p>Intent包含如下信息：</p>
+
+<ul>
+<li>组件名称
+若不提供，则Intent为隐式的。ComponentName对象，可使用setComponent()、setClass()、setClassName()或Intent构造方法设置。</li>
+<li>操作（Action）
+使用Intent类或其他框架类定义的操作常量，也可使用自定义的操作，供Intent在自己的应用内使用。</li>
+<li>数据（Data）
+指定URI（包含独立的scheme、host、port、path属性）、MIME类型。设置数据URI，调用setData()；设置MIME类型，调用setType()；若同时设置2者，调用setDataAndType()。</li>
+<li>类别（Category）
+可设置任意数量的类别。例如CATEGORY_BROWSABLE、CATEGORY_LAUNCHER。可使用addCategory()指定类别。</li>
+</ul>
+
+<p>Intent还可以携带不影响其如何解析为应用组件的信息：</p>
+
+<ul>
+<li>Extra
+携带附加信息。putExtra(String key, 各种类型的value)，或putExtras(Bundle bundle)。</li>
+<li>标志（Flag）
+指示系统如何启动Activity（如Activity属于哪个任务），启动之后如何处理（如Activity是否属于最近的Activity列表）。</li>
+</ul>
+
+<h2 id="toc_2">隐式Intent</h2>
+
+<p>使用隐式Intent startActivity()时，需要先使用resolveActivity()判断是否有应用能够处理该Intent，如果结果为空，则不能继续使用该Intent。</p>
+
+<p>示例：</p>
+
+<pre><code class="language-java">// Create the text message with a string
+Intent sendIntent = new Intent();
+sendIntent.setAction(Intent.ACTION_SEND);
+sendIntent.putExtra(Intent.EXTRA_TEXT, textMessage);
+sendIntent.setType(&quot;text/plain&quot;);
+
+// Verify that the intent will resolve to an activity
+if (sendIntent.resolveActivity(getPackageManager()) != null) {
+    startActivity(sendIntent);
+}
+</code></pre>
+
+<p>PackageManger提供了一套query...()方法来返回所有能够接受特定Intent的组件，还提供了一系列类似的resolve...()方法来确定响应Intent的最佳组件。这2种方法均不会激活组件，而只是列出能够响应的组件。如queryIntentActivities（）、queryIntentServices()、queryIntentBroadcastReceivers()。</p>
+
+<h2 id="toc_3">强制使用应用选择器</h2>
+
+<p>比如“共享”操作，每次都需要显示应用选择器，不应让用户设置默认选项。使用createChooser()创建Intent，并传递给startActivity()。</p>
+
+<p>示例：</p>
+
+<pre><code class="language-java">Intent sendIntent = new Intent(Intent.ACTION_SEND);
+...
+
+// Always use string resources for UI text.
+// This says something like &quot;Share this photo with&quot;
+String title = getResources().getString(R.string.chooser_title);
+// Create intent to show the chooser dialog
+Intent chooser = Intent.createChooser(sendIntent, title);
+
+// Verify the original intent will resolve to at least one activity
+if (sendIntent.resolveActivity(getPackageManager()) != null) {
+    startActivity(chooser);
+}
+</code></pre>
+
+<h2 id="toc_4">接收隐式Intent</h2>
+
+<p>在清单文件中的相应组件（如activity）中添加intent-filter，可以使用<strong>action、data、category</strong>元素。</p>
+
+<p>为了接收<strong>隐式Intent</strong>，必须在intent-filter中添加<strong>CATEGORY_DEFAULT</strong>类别。</p>
+
+<p><strong>一个应用组件可以包含多个intent-filter。</strong></p>
+
+<p><strong>Activity必须在清单文件中声明Intent过滤器</strong>，但<strong>广播接收器的过滤器可以通过调用registerReceiver()动态注册</strong>，通过unregisterReceiver()注销该接收器。</p>
+
+<p>如下，ACTION_MAIN和CATEGORY_LAUNCHER必须配对使用，Activity才会显示在应用启动器中。</p>
+
+<pre><code class="language-xml">&lt;activity android:name=&quot;MainActivity&quot;&gt;
+    &lt;!-- This activity is the main entry, should appear in app launcher --&gt;
+    &lt;intent-filter&gt;
+        &lt;action android:name=&quot;android.intent.action.MAIN&quot; /&gt;
+        &lt;category android:name=&quot;android.intent.category.LAUNCHER&quot; /&gt;
+    &lt;/intent-filter&gt;
+&lt;/activity&gt;
+</code></pre>
+
+<h2 id="toc_5">PendingIntent</h2>
+
+<p>PendingIntent是Intent的包装器。主要是授权外部应用使用包含的Intent，就像是它从自己的应用进程中执行的一样。</p>
+
+<p>主要用例：</p>
+
+<ul>
+<li>通知 NotificationManager；</li>
+<li>应用小部件；</li>
+<li>AlarmManager。</li>
+</ul>
+
+<p>Intent设计为由特定类型的应用组件（Activity、Service、BroadcastReceiver）处理，所以创建PendingIntent时，需声明所需的组件类型：</p>
+
+<ul>
+<li>PendingIntent.getActivity()；</li>
+<li>PendingIntent.getService()；</li>
+<li>PendingIntent.getBroadcast()。</li>
+</ul>
+
+<h2 id="toc_6">通用Intent</h2>
+
+<h3 id="toc_7">闹钟</h3>
+
+<ol>
+<li>创建闹钟</li>
+<li>创建定时器</li>
+<li>显示所有闹铃</li>
+</ol>
+
+<h3 id="toc_8">日历</h3>
+
+<ol>
+<li>添加日历事件</li>
+</ol>
+
+<h3 id="toc_9">相机</h3>
+
+<ol>
+<li>拍摄照片或视频并将其返回</li>
+<li>以静态图像模式启动相机应用</li>
+<li>以视频模式启动相机应用</li>
+</ol>
+
+<h3 id="toc_10">联系人/人员应用</h3>
+
+<ol>
+<li>选择联系人</li>
+<li>选择特定联系人数据</li>
+<li>查看联系人</li>
+<li>编辑现有联系人</li>
+<li>插入联系人</li>
+</ol>
+
+<h3 id="toc_11">电子邮件</h3>
+
+<ol>
+<li>撰写带有可选附件的电子邮件</li>
+</ol>
+
+<h3 id="toc_12">文件存储</h3>
+
+<ol>
+<li>检索特定类型的文件</li>
+<li>打开特定类型的文件？</li>
+</ol>
+
+<h3 id="toc_13">本地操作</h3>
+
+<ol>
+<li>叫车</li>
+</ol>
+
+<h3 id="toc_14">地图</h3>
+
+<ol>
+<li>显示地图上的位置</li>
+</ol>
+
+<h3 id="toc_15">音乐或视频</h3>
+
+<ol>
+<li>播放媒体文件</li>
+<li>基于搜索查询播放音乐</li>
+</ol>
+
+<h3 id="toc_16">新笔记</h3>
+
+<ol>
+<li>创建笔记</li>
+</ol>
+
+<h3 id="toc_17">电话</h3>
+
+<ol>
+<li>发起电话，ACTION_DIAL、ACTION_CALL（需CALL_PHONE权限）</li>
+</ol>
+
+<h3 id="toc_18">搜索</h3>
+
+<ol>
+<li>使用特定应用搜索</li>
+<li>执行网页搜索</li>
+</ol>
+
+<h3 id="toc_19">设置</h3>
+
+<ol>
+<li>打开特定设置部分</li>
+</ol>
+
+<h3 id="toc_20">发送短信</h3>
+
+<ol>
+<li>撰写带附件的短信/彩信</li>
+</ol>
+
+<h3 id="toc_21">网络浏览器</h3>
+
+<ol>
+<li>加载网址<br/>
+提示：如果您的 Android 应用提供与您的网站相似的功能，请为指向您的网站的 URL 加入一个 Intent 过滤器。 之后，如果用户安装了您的应用，点击电子邮件或其他网页中指向您的网站的链接时，将会打开您的 Android 应用而不是您的网页。</li>
+</ol>
+
+<h2 id="toc_22">验证Intent</h2>
+
+<pre><code class="language-shell">adb shell am start -a &lt;ACTION&gt; -t &lt;MIME_TYPE&gt; -d &lt;DATA&gt; \
+  -e &lt;EXTRA_NAME&gt; &lt;EXTRA_VALUE&gt; -n &lt;ACTIVITY&gt;
+</code></pre>
+
+<p>如：</p>
+
+<pre><code class="language-shell">adb shell am start -a android.intent.action.DIAL \
+  -d tel:555-5555 -n org.example.MyApp/.MyActivity
+</code></pre>
+
+<h2 id="toc_23">参考</h2>
+
+<p><a href="https://developer.android.com/guide/components/intents-filters.html">Intent 和 Intent 过滤器</a><br/>
+<a href="https://developer.android.com/guide/components/intents-common.html">通用 Intent</a></p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[HTTP STATUS]]></title>
+    <link href="http://www.felixyan.com/14885069189246.html"/>
+    <updated>2017-03-03T10:08:38+08:00</updated>
+    <id>http://www.felixyan.com/14885069189246.html</id>
+    <content type="html"><![CDATA[
+<h2 id="toc_0">3xx 重定向</h2>
+
+<ul>
+<li>301 Moved Permanently
+永久重定向。非GET、HEAD请求，禁止浏览器自动重定向，除非得到用户确认。但使用HTTP/1.0的浏览器会将原来的POST请求使用GET重定向。</li>
+<li>302 Found
+临时重定向。如不是GET或HEAD请求，则禁止浏览器自动重定向，除非得到用户确认。但实际情况，很多浏览器会使用<strong>GET</strong>重定向。</li>
+<li>303 See Other
+细化302。重定向统一使用GET动词。</li>
+<li>304 Not Modified</li>
+<li>307 Temporary Redirect （自 HTTP/1.1）
+细化302。重定向不改变请求动词。</li>
+<li>308 Permanent Redirect （RFC 7538）
+类似301，但重定向不改变请求动词。</li>
+</ul>
+
+<h2 id="toc_1">参考</h2>
+
+<p><a href="https://zh.wikipedia.org/wiki/HTTP%E7%8A%B6%E6%80%81%E7%A0%81">HTTP状态码</a><br/>
+<a href="https://en.wikipedia.org/wiki/List_of_HTTP_status_codes">List of HTTP status codes</a><br/>
+<a href="http://blog.csdn.net/c289054531/article/details/9196503">http的重定向状态码302，303，307</a></p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[OkHttp相关网络问题]]></title>
+    <link href="http://www.felixyan.com/14882827114508.html"/>
+    <updated>2017-02-28T19:51:51+08:00</updated>
+    <id>http://www.felixyan.com/14882827114508.html</id>
+    <content type="html"><![CDATA[
+<ul>
+<li>java.net.UnknownHostException: Unable to resolve host &quot;<a href="http://www.xxx.com">www.xxx.com</a>&quot;: No address associated with hostname<br/>
+原因：网络差</li>
+</ul>
+
+<span id="more"></span><!-- more -->
+
+<ul>
+<li><p>java.net.ConnectException: Failed to connect to <a href="http://www.xxx.com/100.200.100.200:80">www.xxx.com/100.200.100.200:80</a> <br/>
+原因：请求超时<br/>
+参考：<br/>
+<a href="http://blog.csdn.net/u010142437/article/details/18091545">SocketTimeoutException和ConnectException简介</a><br/>
+<a href="http://www.cnblogs.com/carlosk/archive/2013/03/12/2956502.html">SocketTimeoutException和ConnectTimeoutException的区别</a><br/>
+<a href="http://developer.51cto.com/art/201003/189724.htm">java.net.SocketException四大异常解决方案</a></p></li>
+<li><p>java.net.ProtocolException: expected 5841 bytes but received 5976<br/>
+原因：可能是日志文件上传过程中，又在往文件中写入导致</p></li>
+<li><p>java.net.ProtocolException: Too many follow-up requests: 21 <br/>
+原因：重定向次数过多</p></li>
+<li><p>java.net.SocketException: recvfrom failed: ETIMEDOUT (Connection timed out)<br/>
+原因：网络切换，WIFI切数据，数据切WIFI<br/>
+参考：<br/>
+<a href="https://community.igniterealtime.org/thread/55433">Connection closed with error when switching Data-Wifi</a><br/>
+<a href="https://www.zhihu.com/question/47511950">java的Socket异常: recvfrom failed: ETIMEDOUT ？</a></p></li>
+<li><p>java.net.SocketException: recvfrom failed: ECONNRESET (Connection reset by peer)<br/>
+原因：客户端复用连接，keep alive<br/>
+参考：<br/>
+<a href="http://stackoverflow.com/questions/11207394/getting-socketexception-connection-reset-by-peer-in-android">Getting “SocketException : Connection reset by peer” in Android</a></p></li>
+<li><p>java.net.SocketException: sendto failed: EINPROGRESS (Operation now in progress)<br/>
+原因：未知</p></li>
+<li><p>java.net.SocketException: Socket closed<br/>
+原因：未知</p></li>
+<li><p>java.io.IOException: unexpected end of stream on Connection{<a href="http://www.xxx.com:80">www.xxx.com:80</a>, proxy=DIRECT@ hostAddress=<a href="http://www.xxx.com/100.200.100.200:80">www.xxx.com/100.200.100.200:80</a> cipherSuite=none protocol=http/1.1}<br/>
+原因：客户端复用连接，而连接已断开</p></li>
+</ul>
+
+<h1 id="toc_0">Linux源码中的错误代码errno</h1>
+
+<p>来自<a href="http://blog.csdn.net/macky0668/article/details/4492683">这里</a>，各错误码的详细含义请戳原文查看。</p>
+
+<pre><code class="language-c">// 以下来自linux 的内核代码中的/usr/include/asm/errno.h
+
+#ifndef _I386_ERRNO_H
+
+#define _I386_ERRNO_H
+
+#define EPERM   1 /* Operation not permitted */
+
+#define ENOENT   2 /* No such file or directory */
+
+#define ESRCH   3 /* No such process */
+
+#define EINTR   4 /* Interrupted system call */
+
+#define EIO       5 /* I/O error */
+
+#define ENXIO   6 /* No such device or address */
+
+#define E2BIG   7 /* Arg list too long */
+
+#define ENOEXEC   8 /* Exec format error */
+
+#define EBADF   9 /* Bad file number */
+
+#define ECHILD 10 /* No child processes */
+
+#define EAGAIN 11 /* Try again */
+
+#define ENOMEM 12 /* Out of memory */
+
+#define EACCES 13 /* Permission denied */
+
+#define EFAULT 14 /* Bad address */
+
+#define ENOTBLK 15 /* Block device required */
+
+#define EBUSY 16 /* Device or resource busy */
+
+#define EEXIST 17 /* File exists */
+
+#define EXDEV 18 /* Cross-device link */
+
+#define ENODEV 19 /* No such device */
+
+#define ENOTDIR 20 /* Not a directory */
+
+#define EISDIR 21 /* Is a directory */
+
+#define EINVAL 22 /* Invalid argument */
+
+#define ENFILE 23 /* File table overflow */
+
+#define EMFILE 24 /* Too many open files */
+
+#define ENOTTY 25 /* Not a typewriter */
+
+#define ETXTBSY 26 /* Text file busy */
+
+#define EFBIG 27 /* File too large */
+
+#define ENOSPC 28 /* No space left on device */
+
+#define ESPIPE 29 /* Illegal seek */
+
+#define EROFS 30 /* Read-only file system */
+
+#define EMLINK 31 /* Too many links */
+
+#define EPIPE 32 /* Broken pipe */
+
+#define EDOM 33 /* Math argument out of domain of func */
+
+#define ERANGE 34 /* Math result not representable */
+
+#define EDEADLK         35      /* Resource deadlock would occur */
+#define ENAMETOOLONG    36      /* File name too long */
+#define ENOLCK          37      /* No record locks available */
+#define ENOSYS          38      /* Function not implemented */
+#define ENOTEMPTY       39      /* Directory not empty */
+#define ELOOP           40      /* Too many symbolic links encountered */
+#define EWOULDBLOCK     EAGAIN  /* Operation would block */
+#define ENOMSG          42      /* No message of desired type */
+#define EIDRM           43      /* Identifier removed */
+#define ECHRNG          44      /* Channel number out of range */
+#define EL2NSYNC        45      /* Level 2 not synchronized */
+#define EL3HLT          46      /* Level 3 halted */
+#define EL3RST          47      /* Level 3 reset */
+#define ELNRNG          48      /* Link number out of range */
+#define EUNATCH         49      /* Protocol driver not attached */
+#define ENOCSI          50      /* No CSI structure available */
+#define EL2HLT          51      /* Level 2 halted */
+#define EBADE           52      /* Invalid exchange */
+#define EBADR           53      /* Invalid request descriptor */
+#define EXFULL          54      /* Exchange full */
+#define ENOANO          55      /* No anode */
+#define EBADRQC         56      /* Invalid request code */
+#define EBADSLT         57      /* Invalid slot */
+
+#define EDEADLOCK       EDEADLK
+
+#define EBFONT          59      /* Bad font file format */
+#define ENOSTR          60      /* Device not a stream */
+#define ENODATA         61      /* No data available */
+#define ETIME           62      /* Timer expired */
+#define ENOSR           63      /* Out of streams resources */
+#define ENONET          64      /* Machine is not on the network */
+#define ENOPKG          65      /* Package not installed */
+#define EREMOTE         66      /* Object is remote */
+#define ENOLINK         67      /* Link has been severed */
+#define EADV            68      /* Advertise error */
+#define ESRMNT          69      /* Srmount error */
+#define ECOMM           70      /* Communication error on send */
+#define EPROTO          71      /* Protocol error */
+#define EMULTIHOP       72      /* Multihop attempted */
+#define EDOTDOT         73      /* RFS specific error */
+#define EBADMSG         74      /* Not a data message */
+#define EOVERFLOW       75      /* Value too large for defined data type */
+#define ENOTUNIQ        76      /* Name not unique on network */
+#define EBADFD          77      /* File descriptor in bad state */
+#define EREMCHG         78      /* Remote address changed */
+#define ELIBACC         79      /* Can not access a needed shared library */
+#define ELIBBAD         80      /* Accessing a corrupted shared library */
+#define ELIBSCN         81      /* .lib section in a.out corrupted */
+#define ELIBMAX         82      /* Attempting to link in too many shared libraries */
+#define ELIBEXEC        83      /* Cannot exec a shared library directly */
+#define EILSEQ          84      /* Illegal byte sequence */
+#define ERESTART        85      /* Interrupted system call should be restarted */
+#define ESTRPIPE        86      /* Streams pipe error */
+#define EUSERS          87      /* Too many users */
+#define ENOTSOCK        88      /* Socket operation on non-socket */
+#define EDESTADDRREQ    89      /* Destination address required */
+#define EMSGSIZE        90      /* Message too long */
+#define EPROTOTYPE      91      /* Protocol wrong type for socket */
+#define ENOPROTOOPT     92      /* Protocol not available */
+#define EPROTONOSUPPORT 93      /* Protocol not supported */
+#define ESOCKTNOSUPPORT 94      /* Socket type not supported */
+#define EOPNOTSUPP      95      /* Operation not supported on transport endpoint */
+#define EPFNOSUPPORT    96      /* Protocol family not supported */
+#define EAFNOSUPPORT    97      /* Address family not supported by protocol */
+#define EADDRINUSE      98      /* Address already in use */
+#define EADDRNOTAVAIL   99      /* Cannot assign requested address */
+#define ENETDOWN        100     /* Network is down */
+#define ENETUNREACH     101     /* Network is unreachable */
+#define ENETRESET       102     /* Network dropped connection because of reset */
+#define ECONNABORTED    103     /* Software caused connection abort */
+#define ECONNRESET      104     /* Connection reset by peer */
+#define ENOBUFS         105     /* No buffer space available */
+#define EISCONN         106     /* Transport endpoint is already connected */
+#define ENOTCONN        107     /* Transport endpoint is not connected */
+#define ESHUTDOWN       108     /* Cannot send after transport endpoint shutdown */
+#define ETOOMANYREFS    109     /* Too many references: cannot splice */
+#define ETIMEDOUT       110     /* Connection timed out */
+#define ECONNREFUSED    111     /* Connection refused */
+#define EHOSTDOWN       112     /* Host is down */
+#define EHOSTUNREACH    113     /* No route to host */
+#define EALREADY        114     /* Operation already in progress */
+#define EINPROGRESS     115     /* Operation now in progress */
+#define ESTALE          116     /* Stale NFS file handle */
+#define EUCLEAN         117     /* Structure needs cleaning */
+#define ENOTNAM         118     /* Not a XENIX named type file */
+#define ENAVAIL         119     /* No XENIX semaphores available */
+#define EISNAM          120     /* Is a named type file */
+#define EREMOTEIO       121     /* Remote I/O error */
+#define EDQUOT          122     /* Quota exceeded */
+
+#define ENOMEDIUM       123     /* No medium found */
+#define EMEDIUMTYPE     124     /* Wrong medium type */
+#define ECANCELED       125     /* Operation Canceled */
+#define ENOKEY          126     /* Required key not available */
+#define EKEYEXPIRED     127     /* Key has expired */
+#define EKEYREVOKED     128     /* Key has been revoked */
+#define EKEYREJECTED    129     /* Key was rejected by service */
+
+/* for robust mutexes */
+#define EOWNERDEAD      130     /* Owner died */
+#define ENOTRECOVERABLE 131     /* State not recoverable */
+
+#endif
+</code></pre>
+
+<h1 id="toc_1">参考</h1>
+
+<p><a href="http://blog.csdn.net/macky0668/article/details/4492683">socket error</a><br/>
+<a href="http://hg.openjdk.java.net/jdk8/jdk8/jdk/file/tip/src/solaris/native/java/net/PlainSocketImpl.c#l255">JDK源码 view src/solaris/native/java/net/PlainSocketImpl.c</a></p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Android测试]]></title>
+    <link href="http://www.felixyan.com/14881817840520.html"/>
+    <updated>2017-02-27T15:49:44+08:00</updated>
+    <id>http://www.felixyan.com/14881817840520.html</id>
+    <content type="html"><![CDATA[
+<p>Android的测试基于JUnit。</p>
+
+<span id="more"></span><!-- more -->
+
+<h2 id="toc_0">测试种类</h2>
+
+<ul>
+<li>Local unit tests<br/>
+目录：module-name/src/<strong>test</strong>/java/。<br/>
+运行于本地JVM。测试文件中仅包含java代码，不使用Android相关API，或使用到的API可通过mock对象代替。</li>
+<li>Instrumented tests<br/>
+目录：module-name/src/<strong>androidTest</strong>/java/。<br/>
+运行于模拟器或真机。测试文件中需要使用Android相关API。系统会打包一个测试apk和一个实际apk，这2个apk运行在同一个进程。</li>
+</ul>
+
+<p><img src="http://oatuajceb.bkt.clouddn.com/test-types.png" alt="test-types"/></p>
+
+<table>
+<thead>
+<tr>
+<th>大类别</th>
+<th>子类别</th>
+<th>描述</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>单元测试（Unit tests）</td>
+<td>Local Unit Tests</td>
+<td>运行于本地JVM，不依赖Android Framework或使用mock对象</td>
+</tr>
+<tr>
+<td></td>
+<td>Instrumented Unit Tests</td>
+<td>运行于模拟器或真机，可以使用与设备相关的信息，如app的Context。用于需依赖Android Framework或mock对象无法满足时</td>
+</tr>
+<tr>
+<td>集成测试（Integration tests）</td>
+<td><strong>app内</strong>组件测试</td>
+<td>验证app的行为与预期是否一致。可使用UI测试框架如<strong>Espresso</strong></td>
+</tr>
+<tr>
+<td></td>
+<td><strong>跨app</strong>组件测试</td>
+<td>验证用户app间或用户app与系统app间的行为。可使用UI测试框架如<strong>UI Automator</strong></td>
+</tr>
+</tbody>
+</table>
+
+<p>Unit Testing</p>
+
+<ul>
+<li>Robolectric</li>
+<li>JUnit</li>
+</ul>
+
+<p>Instrumentation Testing</p>
+
+<ul>
+<li>Espresso</li>
+<li>UIAutomator</li>
+<li>Google Android Testing</li>
+<li>Robotium</li>
+<li>Selendroid</li>
+</ul>
+
+<h2 id="toc_1">本地单元测试（Local Unit Tests）</h2>
+
+<p>目录：module-name/src/test/java/</p>
+
+<h3 id="toc_2">JUnit</h3>
+
+<p>只可测试Java代码，如果需要依赖Android API，可以使用Mockito库来mock对象。</p>
+
+<p>JUnit4与JUnit3相比，测试类不再需要继承自junit.framework.TestCase，测试方法不再需要“test”前缀，也不再需要使用junit.framework或junit.extensions包下的类。</p>
+
+<h4 id="toc_3">使用步骤</h4>
+
+<h5 id="toc_4">1. 添加依赖</h5>
+
+<p>在build.gradle（Module:app）中添加JUnit4依赖。</p>
+
+<pre><code class="language-gradle">testCompile &#39;junit:junit:4.12&#39;
+// 可选
+// testCompile &#39;org.mockito:mockito-core:1.10.19&#39;
+</code></pre>
+
+<h5 id="toc_5">2. 创建测试类</h5>
+
+<p>光标置于类名上，Option+Enter，Create Test，选择JUnit4和“setUp/@Before”，勾选要生成的测试方法。</p>
+
+<h5 id="toc_6">3. 编写测试</h5>
+
+<p>使用JUnit框架提供的断言来编写自己的测试。</p>
+
+<pre><code class="language-java">import org.junit.Test;
+import java.util.regex.Pattern;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+    
+public class EmailValidatorTest {
+    
+   @Test
+   public void emailValidator_CorrectEmailSimple_ReturnsTrue() {
+       assertThat(EmailValidator.isValidEmail(&quot;name@email.com&quot;), is(true));
+   }
+   ...
+}
+</code></pre>
+
+<h5 id="toc_7">4. 运行测试</h5>
+
+<p>有以下几种方法：</p>
+
+<ul>
+<li>运行单个测试文件，在Project窗口下，右键测试文件，点击Run；</li>
+<li>运行测试文件中的某些方法或所有方法，右键要运行的方法，点击Run（快捷键Ctrl+R）；</li>
+<li>运行某个目录下的所有测试，右键该目录，选择Run tests；</li>
+<li>命令行./gradlew test。</li>
+</ul>
+
+<h4 id="toc_8">mock Android依赖</h4>
+
+<pre><code class="language-java">import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.CoreMatchers.*;
+import static org.mockito.Mockito.*;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.mockito.runners.MockitoJUnitRunner;
+import android.content.SharedPreferences;
+
+@RunWith(MockitoJUnitRunner.class)
+public class UnitTestSample {
+
+    private static final String FAKE_STRING = &quot;HELLO WORLD&quot;;
+
+    @Mock
+    Context mMockContext;
+
+    @Test
+    public void readStringFromContext_LocalizedString() {
+        // Given a mocked Context injected into the object under test...
+        when(mMockContext.getString(R.string.hello_word))
+                .thenReturn(FAKE_STRING);
+        ClassUnderTest myObjectUnderTest = new ClassUnderTest(mMockContext);
+
+        // ...when the string is returned from the object under test...
+        String result = myObjectUnderTest.getHelloWorldString();
+
+        // ...then the result should be the expected one.
+        assertThat(result, is(FAKE_STRING));
+    }
+}
+</code></pre>
+
+<h3 id="toc_9">Robolectric</h3>
+
+<p>Mock了部分Android的API，可以直接在JVM上调用Android相关类、方法，可以使用Context。</p>
+
+<h2 id="toc_10">设备单元测试（Instrumented Unit Tests）</h2>
+
+<p>目录：module-name/src/androidTest/java/</p>
+
+<p>测试支持库（Testing Support Library）包含JUnit 4 test runner（AndroidJUnitRunner）和UI测试API（Espresso和UI Automator）。</p>
+
+<h3 id="toc_11">使用步骤</h3>
+
+<h4 id="toc_12">1. 配置依赖</h4>
+
+<p>在Project的gradle配置中添加如下依赖：</p>
+
+<pre><code class="language-gradle">dependencies {
+   androidTestCompile &#39;com.android.support:support-annotations:24.0.0&#39;
+   androidTestCompile &#39;com.android.support.test:runner:0.5&#39;
+   androidTestCompile &#39;com.android.support.test:rules:0.5&#39;
+   // Optional -- Hamcrest library
+   //androidTestCompile &#39;org.hamcrest:hamcrest-library:1.3&#39;
+   // Optional -- UI testing with Espresso
+   //androidTestCompile &#39;com.android.support.test.espresso:espresso-core:2.2.2&#39;
+   // Optional -- UI testing with UI Automator
+   //androidTestCompile &#39;com.android.support.test.uiautomator:uiautomator-v18:2.1.2&#39;
+}
+</code></pre>
+
+<blockquote>
+<p>注：若配置中同时包含support-annotations库的compile依赖和espresso-core库的androidTestCompile依赖，可能会因依赖冲突导致build失败，可进行如下配置：</p>
+
+<pre><code class="language-gradle">androidTestCompile(&#39;com.android.support.test.espresso:espresso-core:2.2.2&#39;, {
+   exclude group: &#39;com.android.support&#39;, module: &#39;support-annotations&#39;
+})
+</code></pre>
+</blockquote>
+
+<p>在module的gradle配置中添加如下配置，以指定AndroidJUnitRunner作为默认的Test Instrumentation Runner。</p>
+
+<pre><code class="language-gralde">android {
+   defaultConfig {
+       testInstrumentationRunner &quot;android.support.test.runner.AndroidJUnitRunner&quot;
+   }
+}
+</code></pre>
+
+<h4 id="toc_13">2. 创建测试类</h4>
+
+<p>在测试类前添加<code>@RunWith(AndroidJUnit4.class)</code>注解。</p>
+
+<pre><code class="language-java">import android.os.Parcel;
+import android.support.test.runner.AndroidJUnit4;
+import android.util.Pair;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import java.util.List;
+import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertThat;
+    
+@RunWith(AndroidJUnit4.class)
+@SmallTest
+public class LogHistoryAndroidUnitTest {
+    
+   public static final String TEST_STRING = &quot;This is a string&quot;;
+   public static final long TEST_LONG = 12345678L;
+   private LogHistory mLogHistory;
+    
+   @Before
+   public void createLogHistory() {
+       mLogHistory = new LogHistory();
+   }
+    
+   @Test
+   public void logHistory_ParcelableWriteRead() {
+       // Set up the Parcelable object to send and receive.
+       mLogHistory.addEntry(TEST_STRING, TEST_LONG);
+    
+       // Write the data.
+       Parcel parcel = Parcel.obtain();
+       mLogHistory.writeToParcel(parcel, mLogHistory.describeContents());
+    
+       // After you&#39;re done with writing, you need to reset the parcel for reading.
+       parcel.setDataPosition(0);
+    
+       // Read the data.
+       LogHistory createdFromParcel = LogHistory.CREATOR.createFromParcel(parcel);
+       List&lt;Pair&lt;String, Long&gt;&gt; createdFromParcelData = createdFromParcel.getData();
+    
+       // Verify that the received data is correct.
+       assertThat(createdFromParcelData.size(), is(1));
+       assertThat(createdFromParcelData.get(0).first, is(TEST_STRING));
+       assertThat(createdFromParcelData.get(0).second, is(TEST_LONG));
+   }
+}
+</code></pre>
+
+<h4 id="toc_14">3. 创建测试集（Create a test suite）</h4>
+
+<p>测试集将多个测试组织在一起，测试集置于测试包中（test package），包名一般以.suite结尾。</p>
+
+<pre><code class="language-java">import com.example.android.testing.mysample.CalculatorAddParameterizedTest;
+import com.example.android.testing.mysample.CalculatorInstrumentationTest;
+import org.junit.runner.RunWith;
+import org.junit.runners.Suite;
+
+// Runs all unit tests.
+@RunWith(Suite.class)
+@Suite.SuiteClasses({CalculatorInstrumentationTest.class,
+        CalculatorAddParameterizedTest.class})
+public class UnitTestSuite {}
+</code></pre>
+
+<h4 id="toc_15">4. 运行测试</h4>
+
+<p>有以下几种方法：</p>
+
+<ul>
+<li>运行单个测试文件，在Project窗口下，右键测试文件，点击Run；</li>
+<li>运行测试文件中的某些方法或所有方法，右键要运行的方法，点击Run（快捷键Ctrl+R）；</li>
+<li>运行某个目录下的所有测试，右键该目录，选择Run tests；</li>
+</ul>
+
+<h2 id="toc_16">UI测试</h2>
+
+<p>目录：module-name/src/androidTest/java/</p>
+
+<h3 id="toc_17">单APP UI测试（Espresso）</h3>
+
+<p>使用步骤</p>
+
+<h4 id="toc_18">1. 添加依赖</h4>
+
+<p>在build.gradle（Module:app）中添加。</p>
+
+<pre><code class="language-gradle">...
+android {
+   ...
+   defaultConfig {
+       ...
+       testInstrumentationRunner &quot;android.support.test.runner.AndroidJUnitRunner&quot;
+   }
+}
+    
+dependencies {
+   ...
+   androidTestCompile(&#39;com.android.support.test.espresso:espresso-core:2.2&#39;) {
+       // Necessary if your app targets Marshmallow (since Espresso
+       // hasn&#39;t moved to Marshmallow yet)
+       exclude group: &#39;com.android.support&#39;, module: &#39;support-annotations&#39;
+   }
+   androidTestCompile(&#39;com.android.support.test:runner:0.3&#39;) {
+       // Necessary if your app targets Marshmallow (since the test runner
+       // hasn&#39;t moved to Marshmallow yet)
+       exclude group: &#39;com.android.support&#39;, module: &#39;support-annotations&#39;
+   }
+}
+</code></pre>
+
+<h4 id="toc_19">2. 创建测试类</h4>
+
+<p>在src/androidTest/java目录下添加测试类，测试类的包最好与相应的类的包保持一致。</p>
+
+<h4 id="toc_20">3. 编写测试</h4>
+
+<p>示例如下：</p>
+
+<pre><code class="language-java">// MainActivityInstrumentationTest.java
+    
+import static android.support.test.espresso.Espresso.onView;
+import static android.support.test.espresso.action.ViewActions.typeText;
+import static android.support.test.espresso.assertion.ViewAssertions.matches;
+import static android.support.test.espresso.matcher.ViewMatchers.withId;
+import static android.support.test.espresso.matcher.ViewMatchers.withText;
+    
+// Tests for MainActivity
+public class MainActivityInstrumentationTest {
+    
+   // Preferred JUnit 4 mechanism of specifying the activity to be launched before each test
+   @Rule
+   public ActivityTestRule&lt;MainActivity&gt; activityTestRule =
+           new ActivityTestRule&lt;&gt;(MainActivity.class);
+    
+   // Looks for an EditText with id = &quot;R.id.etInput&quot;
+   // Types the text &quot;Hello&quot; into the EditText
+   // Verifies the EditText has text &quot;Hello&quot;
+   @Test
+   public void validateEditText() {
+       onView(withId(R.id.etInput)).perform(typeText(&quot;Hello&quot;)).check(matches(withText(&quot;Hello&quot;)));
+       // 上面使用了很多静态引用，以保证代码易读性。
+       // 如果不使用静态引用，代码如下：
+       Espresso.onView(ViewMatchers.withId(R.id.etInput))
+           .perform(ViewActions.typeText(&quot;Hello&quot;))
+           .check(ViewAssertions.matches(ViewMatchers.withText(&quot;Hello&quot;)));
+   }
+}
+</code></pre>
+
+<p>onView、perform、check方法的返回类型均为ViewInteraction。</p>
+
+<p>Espresso测试的标准模式是查找一个View（ViewMatchers），在该View上做一些事情（ViewActions），然后验证该View的一些属性（ViewAssertions）。</p>
+
+<h4 id="toc_21">4. 运行测试</h4>
+
+<ul>
+<li>使用Android Studio运行单个测试：右键测试类，选择Run，然后在控制台中查看结果。</li>
+<li>使用gradle运行所有测试：打开Gradle Window，在Tasks-&gt;verification下找到connectedDebugAndroidTest，右键选中然后选择Run。会在以下位置生成测试报告app/build/reports/androidTests/connected/index.html。</li>
+</ul>
+
+<h3 id="toc_22">多APP UI测试（UI Automator）</h3>
+
+<p>暂略。</p>
+
+<h2 id="toc_23">参考</h2>
+
+<p><a href="https://developer.android.com/training/testing/start/index.html?hl=zh-cn">Getting Started with Testing</a><br/>
+<a href="https://developer.android.com/training/testing/unit-testing/local-unit-tests.html?hl=zh-cn">Building Local Unit Tests</a><br/>
+<a href="https://developer.android.com/training/testing/unit-testing/instrumented-unit-tests.html?hl=zh-cn">Building Instrumented Unit Tests</a><br/>
+<a href="https://developer.android.com/training/testing/ui-testing/espresso-testing.html?hl=zh-cn">Testing UI for a Single App</a><br/>
+<a href="https://developer.android.com/training/testing/ui-testing/uiautomator-testing.html?hl=zh-cn">Testing UI for Multiple Apps</a></p>
+
+<p><a href="http://www.jianshu.com/p/03118c11c199">在Android Studio中进行单元测试和UI测试</a><br/>
+<a href="http://guides.codepath.com/android/Android-Testing-Options">Android Testing Options</a><br/>
+<a href="http://guides.codepath.com/android/Unit-Testing-with-Robolectric">Unit Testing with Robolectric</a><br/>
+<a href="http://guides.codepath.com/android/UI-Testing-with-Espresso">UI Testing with Espresso</a><br/>
+<a href="http://stackoverflow.com/questions/18271474/robolectric-vs-android-test-framework#28347107">Robolectric vs Android Test Framework</a><br/>
+<a href="http://www.infoq.com/cn/articles/mogujie-android-unit-testing">蘑菇街支付金融Android单元测试实践</a></p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Prefs保存double类型]]></title>
+    <link href="http://www.felixyan.com/14878622743943.html"/>
+    <updated>2017-02-23T23:04:34+08:00</updated>
+    <id>http://www.felixyan.com/14878622743943.html</id>
+    <content type="html"><![CDATA[
+<pre><code class="language-java">/**
+ * 根据IEEE 754规范
+ * 存的时候，转换成long类型表示的二进制位格式
+ * doubleToRawLongBits与doubleToLongBits方法的区别在于
+ * 前者返回实际的NaN值相应的二进制位格式，
+ * 后者将所有的NaN值都归为一个规范的NaN值，并返回该规范的NaN值的二进制位格式
+ */
+Double.doubleToRawLongBits(double value);
+
+// 取的时候，将long类型表示的二进制位格式转换成double
+Double.longBitsToDouble(long value);
+</code></pre>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[进程、线程基础]]></title>
+    <link href="http://www.felixyan.com/14869801736885.html"/>
+    <updated>2017-02-13T18:02:53+08:00</updated>
+    <id>http://www.felixyan.com/14869801736885.html</id>
+    <content type="html"><![CDATA[
+<h2 id="toc_0">1. 基本概念</h2>
+
+<p>进程：每个进程对应一个程序，<strong>对应一定的内存地址空间</strong>，且只能使用其自己的内存空间，进程间互不干扰。进程保存了程序每个时刻的运行状态，进程暂停时会保存其当前的状态（进程标识、进程使用的资源等），下次切换回来时，根据之前保存的状态进行恢复，然后继续执行。</p>
+
+<span id="more"></span><!-- more -->
+
+<p>线程：一个进程包含多个线程，但这些<strong>线程共享进程占用的资源和地址空间</strong>。</p>
+
+<p><strong>进程</strong>是操作系统进行<strong>资源分配</strong>的基本单位，而<strong>线程</strong>是操作系统进行<strong>调度</strong>的基本单位。</p>
+
+<p>进程使得操作系统的并发性成为可能，而线程使得进程内部的并发成为可能。</p>
+
+<h2 id="toc_1">2. Java中的进程、线程</h2>
+
+<p>Java中，<strong>一个应用程序对应一个JVM实例</strong>（亦称JVM进程），名字一般默认为java.exe或javaw.exe。</p>
+
+<p>Java采用<strong>单线程编程模型</strong>，即程序中没有主动创建线程的话，默认只会创建一个线程，称为主线程，但不代表JVM中只有一个线程，JVM实例在创建的时候，会同时创建很多其他线程（如垃圾收集器线程）。</p>
+
+<h3 id="toc_2">Java中创建线程</h3>
+
+<p>2种方式，1. 继承Thread类；2. 实现Runnable接口。</p>
+
+<h3 id="toc_3">Java中创建进程</h3>
+
+<p>2种方式：</p>
+
+<ol>
+<li><p>通过ProcessBuilder.start方法创建；<br/>
+ProcessBuilder.start方法中调用了ProcessImpl.start方法，ProcessImpl类本身继承了Process类，而在ProcessImpl.start方法中new了一个ProcessImpl实例并返回。</p></li>
+<li><p>通过Runtime.exec方法创建。<br/>
+Runtime.exec方法中调用了ProcessBuilder.start方法。<strong>Runtime，即运行时，表示当前进程所在的虚拟机实例。</strong></p></li>
+</ol>
+
+<p>用法：</p>
+
+<ol>
+<li><p>通过ProcessBuilder.start方法</p>
+
+<pre><code class="language-java">ProcessBuilder pb = new ProcessBuilder(&quot;cmd&quot;,&quot;/c&quot;,&quot;ipconfig/all&quot;);
+Process process = pb.start();
+Scanner scanner = new Scanner(process.getInputStream());
+
+while(scanner.hasNextLine()){
+  System.out.println(scanner.nextLine());
+}
+scanner.close();
+</code></pre></li>
+<li><p>通过Runtime.exec方法</p>
+
+<pre><code class="language-java">String cmd = &quot;cmd &quot;+&quot;/c &quot;+&quot;ipconfig/all&quot;;
+Process process = Runtime.getRuntime().exec(cmd); // 单例方式获取Runtime实例
+Scanner scanner = new Scanner(process.getInputStream());
+
+while(scanner.hasNextLine()){
+  System.out.println(scanner.nextLine());
+}
+scanner.close();
+</code></pre></li>
+</ol>
+
+<h2 id="toc_4">3. Thread类的使用</h2>
+
+<p>线程的状态及对应的方法<br/>
+<img src="http://images.cnitblog.com/blog/288799/201409/061046391107893.jpg" alt="线程的状态及对应的方法"/></p>
+
+<h3 id="toc_5">线程的状态</h3>
+
+<p><strong>线程包括5个状态：创建（new）、就绪（runnable）、运行（running）、阻塞（blocked）[time waiting、waiting]、消亡（dead）。</strong></p>
+
+<p>线程的创建状态，new一个线程。</p>
+
+<p><strong>线程创建后，不会立即进入就绪状态</strong>，因为线程运行需要一些条件（如内存资源，线程私有的程序计数器、Java栈、本地方法栈），只有条件满足了才进入就绪状态。调用start方法会为线程分配需要的资源。</p>
+
+<p>线程进入就绪状态后，不代表立即能获取CPU执行时间，当得到CPU执行时间后，才进入运行状态。</p>
+
+<p>线程运行过程中，可能有多个原因导致线程无法继续运行，如sleep()、join()/wait()、同步块阻塞。对应time waiting、waiting、blocked状态。</p>
+
+<h3 id="toc_6">上下文切换</h3>
+
+<p>线程的上下文切换实际上就是<strong>存储和恢复CPU状态的过程</strong>，它使得线程能够从中断点恢复执行。</p>
+
+<h3 id="toc_7">Thread类中的方法</h3>
+
+<p>线程优先级：最大10，最小1，默认5。</p>
+
+<p>线程运行相关方法：</p>
+
+<ol>
+<li>start。<br/>
+启动一个线程，为线程分配需要的资源。</li>
+<li>run。</li>
+<li>sleep。<br/>
+交出CPU，进入<strong>阻塞状态，不释放锁</strong>。</li>
+<li>yield。<br/>
+交出CPU，重回<strong>就绪状态，不释放锁</strong>。</li>
+<li>join。<br/>
+等待thread执行完毕或等待指定时间，内部使用wait实现。交出CPU，进入<strong>阻塞状态，释放锁</strong>。</li>
+<li>interrupt。<br/>
+<strong>中断处于阻塞状态的线程</strong>（使其抛出中断异常）。</li>
+</ol>
+
+<p>线程属性相关方法：</p>
+
+<ol>
+<li>getId。</li>
+<li>getName、setName。</li>
+<li>getPriority、setPriority。</li>
+<li>setDaemon、isDaemon。
+<strong>守护线程依赖于创建它的线程，而用户线程不依赖。</strong>创建守护线程的线程运行完毕后，守护线程也会随之消亡，而用户线程会一直运行到其结束。</li>
+</ol>
+
+<p>获取当前线程的静态方法Thread.currentThread()。</p>
+
+<h2 id="toc_8">参考</h2>
+
+<p><a href="http://www.cnblogs.com/dolphin0520/p/3910667.html">Java多线程基础：进程和线程之由来</a> <br/>
+<a href="http://www.cnblogs.com/dolphin0520/p/3913517.html">Java并发编程：如何创建线程？</a><br/>
+<a href="http://www.cnblogs.com/dolphin0520/p/3920357.html">Java并发编程：Thread类的使用</a></p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[并发容器、阻塞队列]]></title>
+    <link href="http://www.felixyan.com/14869139713567.html"/>
+    <updated>2017-02-12T23:39:31+08:00</updated>
+    <id>http://www.felixyan.com/14869139713567.html</id>
+    <content type="html"><![CDATA[
+<h2 id="toc_0">1. 并发容器</h2>
+
+<h3 id="toc_1">1.1 并发容器种类</h3>
+
+<p>jdk 1.5 引入了并发容器，同之前的同步容器相比，主要解决了2个问题：<br/>
+1. 根据具体场景，尽量避免synchronized，提供并发性<br/>
+2. 定义了一些并发安全的复合操作，保证并发环境下的迭代不会出错（但未必每次看到的都是最新的数据）</p>
+
+<span id="more"></span><!-- more -->
+
+<ul>
+<li><strong>ConcurrentHashMap：</strong>替代同步Map（Collections.synchronized(new HashMap())），分段锁；增加了原子复合操作，如putIfAbsent()、replace()；</li>
+<li><strong>CopyOnWriteArrayList：</strong>替代List；迭代过程保证不出错，除了加锁，另一种方法是克隆容器对象；</li>
+<li>CopyOnWriteArraySet：替代Set；</li>
+<li>ConcurrentLinkedQueue：先进先出队列，非阻塞；</li>
+<li>ConcurrentSkipListMap：替代SoredMap（Collections.synchronizedMap(new TreeMap())）；</li>
+<li>ConcurrentSkipListSet：替代SoredSet（Collections.synchronizedSet(new TreeMap())）；</li>
+</ul>
+
+<h3 id="toc_2">1.2 ConcurrentHashMap</h3>
+
+<h4 id="toc_3">ConcurrentHashMap内部结构</h4>
+
+<p><img src="http://pic.yupoo.com/goldendoc/Ba4GCFe1/nuEZ0.png?_=3932905" alt="ConcurrentHashMap结构"/></p>
+
+<p>结构：Segment数组+HashEntry链表数组，Segment是一种可重入锁ReentrantLock。<br/>
+读操作：定位1个元素需要2次Hash操作，第一次Hash定位到Segment，第二次Hash定位到元素所在链表的头部。<br/>
+写操作：只对元素所在的Segment加锁，如需扩容，则只对Segment扩容。</p>
+
+<p>Segment结构。</p>
+
+<pre><code class="language-java">static final class Segment&lt;K,V&gt; extends ReentrantLock implements Serializable {
+    transient volatile int count; // Segment中元素的数量
+    transient int modCount; // 对table大小造成影响的操作数量（如put、remove）
+    transient int threshold; // 阈值，Segment中元素超过该阈值后会对Segment扩容
+    transient volatile HashEntry&lt;K,V&gt;[] table; // 链表数组，每个元素代表了一个链表的头部
+    final float loadFactor; // 负载因子，用于确定threshold
+}
+</code></pre>
+
+<p>HashEntry结构。</p>
+
+<pre><code class="language-java">static final class HashEntry&lt;K,V&gt; {
+    final K key;
+    final int hash;
+    volatile V value;
+    final HashEntry&lt;K,V&gt; next;
+}
+</code></pre>
+
+<h4 id="toc_4">初始化</h4>
+
+<p>Segment、HashEntry的个数都是2的n次方个，便于执行Hash计算。</p>
+
+<h4 id="toc_5">get操作</h4>
+
+<p>get操作的高效之处在于整个get过程不需要加锁，除非读到的值是空的才会加锁重读。不加锁的原因是get方法中使用的共享变量都是volatile的，保证线程间的可见性。</p>
+
+<p>ConcurrentHashMap的get方法、segmentFor方法。</p>
+
+<pre><code class="language-java">public V get(Object key) {
+  int hash = hash(key.hashCode()); // 对hashCode再哈希，为了减少哈希冲突
+  return segmentFor(hash).get(key, hash);
+}
+</code></pre>
+
+<pre><code class="language-java">final Segment&lt;K,V&gt; segmentFor(int hash) {
+    return segments[(hash &gt;&gt;&gt; segmentShift) &amp; segmentMask];
+}
+</code></pre>
+
+<p>Segment的get方法。</p>
+
+<pre><code class="language-java">V get(Object key, int hash) {
+    if (count != 0) { // read-volatile
+        HashEntry&lt;K,V&gt; e = getFirst(hash);
+        while (e != null) {
+            if (e.hash == hash &amp;&amp; key.equals(e.key)) {
+                V v = e.value;
+                if (v != null)
+                    return v;
+                return readValueUnderLock(e); // recheck 读到空值，加锁重读
+            }
+            e = e.next;
+        }
+    }
+    return null;
+}
+</code></pre>
+
+<h4 id="toc_6">put操作</h4>
+
+<p>需要加锁完成。如果Segment中的元素数量超过了阈值，需要对Segment扩容，再进行rehash。如果找到要更新的元素，则更新其value，否则生成一个新的HashEntry加到Segment头部。</p>
+
+<h4 id="toc_7">remove操作</h4>
+
+<p>先确定要删除的元素位置，不过删除的方式不是将待删除元素前面一个元素的next指向后一个元素，因为HashEntry中的next是final的，一经赋值不可修改。所以定位到待删除元素的位置后，将待删除元素前的元素复制一遍，然后一个个重新接到链表上。</p>
+
+<p><img src="http://pic.yupoo.com/goldendoc/Ba3OfBv8/medish.jpg?_=3932905" alt="remove元素前"/></p>
+
+<p>如上图，现在要删除元素3，删除后链表如下图。<br/>
+<img src="http://pic.yupoo.com/goldendoc/Ba3OfPQE/medish.jpg?_=3932905" alt="remove元素后"/></p>
+
+<pre><code class="language-java">// All entries following removed node can stay
+// in list, but all preceding ones need to be
+// cloned.
+++modCount;
+HashEntry&lt;K,V&gt; newFirst = e.next;
+for (HashEntry&lt;K,V&gt; p = first; p != e; p = p.next)
+    newFirst = new HashEntry&lt;K,V&gt;(p.key, p.hash, newFirst, p.value);
+tab[index] = newFirst;
+</code></pre>
+
+<h4 id="toc_8">size操作</h4>
+
+<p>不加锁统计2遍各个Segment的大小，如果2次统计modCount没有发生变化，则返回第一次统计值，否则加锁统计一次所有Segment的大小。</p>
+
+<h4 id="toc_9">参考</h4>
+
+<p><a href="http://www.cnblogs.com/dolphin0520/p/3932905.html">Java并发编程：并发容器之ConcurrentHashMap（转载）</a><br/>
+<a href="http://ifeve.com/ConcurrentHashMap/">聊聊并发（四）深入分析ConcurrentHashMap</a></p>
+
+<h3 id="toc_10">1.3 CopyOnWriteArrayList</h3>
+
+<p>读的时候不加锁，写的时候加锁，用于读多写少的并发场景。</p>
+
+<p>回顾2个常识：<br/>
+1. Java中“=”操作只是将引用与对象关联，线程A将线程B中的引用指向另一个对象，他们之间不会发生ConcurrentModificationException。<br/>
+2. Java中2个引用指向同一个对象，若引用A指向另一个对象，则不会影响引用B，引用B仍然指向原来的对象。</p>
+
+<p><strong>复制数组使用的是Arrays.copyOf方法</strong>，其内部调用的System.arraycopy的native方法。对于数组元素为引用类型的，则只在新数组中将元素引用指向旧数组相应的元素；对于非引用类型，则会将旧数组中的元素复制到新数组。参考<a href="https://stackoverflow.com/questions/18351726/does-arrays-copyof-produce-a-shallow-or-a-deep-copy#38104094">StackOverflow上的回答</a></p>
+
+<p>注意点：<br/>
+1. 减少写时扩容开销，根据实际需要初始化CopyOnWriteMap的大小<br/>
+2. 使用批量添加，因为每次添加容器都会进行复制</p>
+
+<p>缺点：<br/>
+1. 内存占用问题<br/>
+2. 数据一致性问题</p>
+
+<h4 id="toc_11">参考</h4>
+
+<p><a href="http://www.cnblogs.com/dolphin0520/p/3938914.html">Java并发编程：并发容器之CopyOnWriteArrayList（转载）</a><br/>
+<a href="http://m.blog.csdn.net/article/details?id=8494675">java CopyOnWriteArrayList的使用</a></p>
+
+<h2 id="toc_12">2. 阻塞队列</h2>
+
+<h3 id="toc_13">非阻塞队列</h3>
+
+<p>PriorityQueue、LinkedList。</p>
+
+<p>主要方法：<br/>
+add(E e)：插入队尾。成功，返回true，失败（队列已满），抛异常；<br/>
+remove()：移除队首元素。成功，返回true，失败（队列空），抛异常；<br/>
+<strong>offer(E e)：</strong>插入队尾。成功，返回true，失败（队列已满），返回false；<br/>
+<strong>poll()：</strong>移除并获取队首元素。成功，返回队首元素，失败返回null；<br/>
+<strong>peek：</strong>获取队首元素。成功，返回队首元素，失败返回null。</p>
+
+<p>建议使用offer、poll、peek，因为可以根据返回值判断操作是否成功。非阻塞队列中的方法都没有进行同步措施。</p>
+
+<h3 id="toc_14">阻塞队列</h3>
+
+<p>ArrayBlockingQueue：基于数组，先进先出，有界。创建时需指定容量大小，并且可指定公平性非公平性。<br/>
+LinkedBlockingQueue：基于链表，先进先出，有界。创建时若不指定容量大小，则默认大小为Integer.MAX_VALUE。<br/>
+PriorityBlockingQueue：按照元素优先级排序，并按照优先级出队。无界（即容量无上限）。<br/>
+DelayQueue：基于PriorityQueue，延时阻塞队列，无界。无界阻塞队列，插入数据时永远不会被阻塞，只有取数据时才会被阻塞。</p>
+
+<p>主要方法：<br/>
+包含了非阻塞队列的5个方法，且均进行了同步措施。除此之外，还提供了以下4个方法：<br/>
+<strong>put(E e)：</strong>向队尾存入元素，若队列满，则等待；<br/>
+<strong>take()：</strong>取队首元素，若队列空，则等待；<br/>
+<strong>offer(E e, long timeout, TimeUnit unit)：</strong>向队尾存入元素，若队列满，则等待一定时间，若超时仍未成功，则返回false，否则返回true；<br/>
+<strong>poll(long timeout, TimeUnit unit)：</strong>取队首元素，若队列空，则等待一定时间，若超时仍未取到，则返回null，否则返回取得的元素。</p>
+
+<h3 id="toc_15">阻塞队列原理</h3>
+
+<p>以ArrayBlockingQueue为例，</p>
+
+<pre><code class="language-java">public class ArrayBlockingQueue&lt;E&gt; extends AbstractQueue&lt;E&gt;
+implements BlockingQueue&lt;E&gt;, java.io.Serializable {
+ 
+    private static final long serialVersionUID = -817911632652898426L;
+     
+    /** The queued items  */
+    private final E[] items;
+    /** items index for next take, poll or remove */
+    private int takeIndex;
+    /** items index for next put, offer, or add. */
+    private int putIndex;
+    /** Number of items in the queue */
+    private int count;
+     
+    /*
+    * Concurrency control uses the classic two-condition algorithm
+    * found in any textbook.
+    */
+     
+    /** Main lock guarding all access */
+    private final ReentrantLock lock;
+    /** Condition for waiting takes */
+    private final Condition notEmpty;
+    /** Condition for waiting puts */
+    private final Condition notFull;
+}
+</code></pre>
+
+<h3 id="toc_16">参考</h3>
+
+<p><a href="http://www.cnblogs.com/dolphin0520/p/3932906.html">Java并发编程：阻塞队列</a></p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[ConcurrentModificationException异常]]></title>
+    <link href="http://www.felixyan.com/14868914180518.html"/>
+    <updated>2017-02-12T17:23:38+08:00</updated>
+    <id>http://www.felixyan.com/14868914180518.html</id>
+    <content type="html"><![CDATA[
+<h2 id="toc_0">原因</h2>
+
+<p>AbstractList类的方法checkForComodification()如下：</p>
+
+<pre><code class="language-java">final void checkForComodification() {
+    if (modCount != expectedModCount)
+    throw new ConcurrentModificationException();
+}
+</code></pre>
+
+<span id="more"></span><!-- more -->
+
+<p>其中modCount为AbstractList的成员变量，表示对list的修改次数，每次调用ArrayList的add()、remove()方法时该值+1；而expectedModCount为AbstractList的内部类Itr的成员变量，表示对list修改次数的期望值，初始时，二者值相等。</p>
+
+<p>发生该异常的原因是调用list.remove()导致modCount与expectedModCount不相等。</p>
+
+<h2 id="toc_1">单线程环境下解决办法</h2>
+
+<p>调用Itr中的remove()方法，该方法实际上也是调用的list.remove()，但多了expectedModCount = modCount的操作。</p>
+
+<h2 id="toc_2">多线程环境下解决办法</h2>
+
+<p>将ArrayList改为Vector并不能解决问题，因为Vector继承自AbstractList，所以通过Iterator来访问容器时，并不需要获取锁。因此会出现多个线程同时操作一个容器的情况，可能会导致某个线程中的expectedModCount与modCount不相等。</p>
+
+<p>2种解决办法：<br/>
+1. 通过Iterator迭代的时候使用synchronized或lock进行同步；<br/>
+2. 使用并发容器CopyOnWriteArrayList代替ArrayList和Vector。</p>
+
+<h2 id="toc_3">参考</h2>
+
+<p><a href="http://www.cnblogs.com/dolphin0520/p/3933551.html">Java ConcurrentModificationException异常原因和解决方法</a></p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[同步容器]]></title>
+    <link href="http://www.felixyan.com/14868881967335.html"/>
+    <updated>2017-02-12T16:29:56+08:00</updated>
+    <id>http://www.felixyan.com/14868881967335.html</id>
+    <content type="html"><![CDATA[
+<h2 id="toc_0">线程安全相关类、并发工具</h2>
+
+<p>同步容器、并发容器、阻塞队列、Synchronizer（如CountDownLatch）。</p>
+
+<span id="more"></span><!-- more -->
+
+<h2 id="toc_1">集合容器框架</h2>
+
+<p>Java集合容器框架，4大类别（均为接口）：List、Set、Queue、Map。<br/>
+前3者继承了顶级接口Collection，Map本身是一个顶级接口。</p>
+
+<p>ArrayList：实现了List。<br/>
+<strong>LinkedList：</strong>双向链表，实现了List、Dequeue。<br/>
+HashSet：实现了Set。<br/>
+<strong>Dequeue：</strong>双向队列，允许队首、队尾进行入队出队操作，继承了Queue。<br/>
+PriorityQueue：实现了Queue。</p>
+
+<h2 id="toc_2">同步容器</h2>
+
+<h3 id="toc_3">类别</h3>
+
+<ol>
+<li>Vector（类似ArrayList）、<strong>Stack（继承Vector）</strong>、HashTable（类似HashMap）</li>
+<li>Collections静态工程方法创建的类，如synchronizedCollection、synchronizedList等</li>
+</ol>
+
+<h3 id="toc_4">缺陷</h3>
+
+<ol>
+<li>性能问题。为解决该问题，Java 1.5提供了并发容器。</li>
+<li>仍存在线程不安全。一个线程vector.get(i)前，另一个线程vector.remove(i)，造成数组下标越界。</li>
+<li>ConcurrentModificationException。</li>
+</ol>
+
+<h3 id="toc_5">参考</h3>
+
+<p><a href="http://www.cnblogs.com/dolphin0520/p/3933404.html">http://www.cnblogs.com/dolphin0520/p/3933404.html</a><br/>
+《深入理解Java虚拟机》<br/>
+《Java并发编程实战》</p>
+
+]]></content>
+  </entry>
+  
+</feed>
