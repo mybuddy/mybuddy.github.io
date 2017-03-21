@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>
     
-  ConcurrentModificationException异常 - yanfei's tick tock
+  Android多用户及sharedUserId - yanfei's tick tock
   
   </title>
   
@@ -107,21 +107,21 @@
       <div class="markdown-body article-wrap">
        <div class="article">
           
-          <h1>ConcurrentModificationException异常</h1>
+          <h1>Android多用户及sharedUserId</h1>
      
         <div class="read-more clearfix">
-          <span class="date">2017/2/12 17:23 下午</span>
+          <span class="date">2017/3/21 12:10 下午</span>
 
           <span>posted in&nbsp;</span> 
           
-              <span class="posted-in"><a href='%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B.html'>并发编程</a></span>
+              <span class="posted-in"><a href='Android.html'>Android</a></span>
            
          
           <span class="comments">
             
 
             
-              &nbsp;<a  class="ds-thread-count" data-thread-key="14868914180518.html" data-count-type="comments" href="14868914180518.html#ds-thread"></a>
+              &nbsp;<a  class="ds-thread-count" data-thread-key="14900694280421.html" data-count-type="comments" href="14900694280421.html#ds-thread"></a>
             
           </span>
 
@@ -129,37 +129,78 @@
       </div><!-- article -->
 
       <div class="article-content">
-      <h2 id="toc_0">原因</h2>
+      <h2 id="toc_0">多用户机制</h2>
 
-<p>AbstractList类的方法checkForComodification()如下：</p>
+<p>Android将Unix的多用户用于实现App的沙箱机制。</p>
 
-<pre><code class="language-java">final void checkForComodification() {
-    if (modCount != expectedModCount)
-    throw new ConcurrentModificationException();
-}
+<p>Android支持多用户之前：uid = appId；<br/>
+<strong>Android支持多用户之后：uid = userId + appId</strong>（如<code>u0_a110</code>、<code>u10_a110</code>）。</p>
+
+<blockquote>
+<p>uid：Unix userId（不要与pid混淆）；<br/>
+userId：Android多用户；<br/>
+appId：系统为每个App分配的id。</p>
+</blockquote>
+
+<p>adb shell中查看2个用户打开同一个app时的进程示例，<code>ps | grep -E &#39;NAME| &lt;keyword&gt;&#39;</code></p>
+
+<p><img src="http://oatuajceb.bkt.clouddn.com/14900879389830.jpg" alt="进程示意"/></p>
+
+<ul>
+<li>Android 4.2（api 17）开始支持多用户，默认owner的userId为0，其余userId从10开始。</li>
+<li>App私有数据区分不同用户，从<strong>/data/data/&lt;pkgname&gt;</strong>变更为<strong>/data/user/&lt;userId&gt;/&lt;pkgname&gt;</strong>；其中owner用户的/data/user/0/通过软链接方式指向/data/data/；</li>
+<li>App代码不区分不同用户，仍为<strong>/data/app</strong>。</li>
+</ul>
+
+<h2 id="toc_1">sharedUserId</h2>
+
+<p>在android系统中，apk之间可以相互读取数据的条件是：有同样的签名，并且AndroidManifest.xml文件中配置的android:sharedUserId属性值相同，那么两个apk可以互相访问私有数据。<strong>但默认2个app运行在不同的进程，除非指定android:process为同一进程，否则无法直接访问内存数据。</strong>(实际测试，2个app指定同一个process则启动一个app时另一个会crash，不知为何？)</p>
+
+<p>通过userid访问其他apk资源的方法:</p>
+
+<ol>
+<li><p>应用程序A和插件(比如皮肤)程序B的AndroidManifest.xml中配置相同的sharedUserId</p>
+
+<pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;
+&lt;manifest xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;
+    package=&quot;com.lonshine.skin&quot;
+    android:versionCode=&quot;1&quot;
+    android:versionName=&quot;1.0&quot;
+    android:sharedUserId=&quot;com.rongqin&quot; &gt;
+</code></pre></li>
+<li><p>应用A访问应用B中的资源</p>
+
+<pre><code class="language-java">Context context = createPackageContext(&quot;com.lonshine.skin&quot;, Context.CONTEXT_IGNORE_SECURITY);
 </code></pre>
 
-<span id="more"></span><!-- more -->
+<p>获取到com.lonshine.skin对应的Context，通过返回的context对象就可以访问到com.lonshine.skin中的任何资源。</p></li>
+</ol>
 
-<p>其中modCount为AbstractList的成员变量，表示对list的修改次数，每次调用ArrayList的add()、remove()方法时该值+1；而expectedModCount为AbstractList的内部类Itr的成员变量，表示对list修改次数的期望值，初始时，二者值相等。</p>
+<ul>
+<li><p>例如，应用A获取应用B中的bg.png:</p>
 
-<p>发生该异常的原因是调用list.remove()导致modCount与expectedModCount不相等。</p>
+<pre><code class="language-java">Resources resources = context.getResources();
+int drawableId = resources.getIdentifier(&quot;bg&quot;, &quot;drawable&quot;, &quot;com.lonshine.skin&quot;);
+Drawable drawable = resources.getDrawable(drawableId);
+</code></pre>
 
-<h2 id="toc_1">单线程环境下解决办法</h2>
+<p>这样就得到了图片的引用，其他xml资源文件的获取方式也是类似的。</p></li>
+<li><p>应用A获取应用B中的Preferences中的数据</p>
 
-<p>调用Itr中的remove()方法，该方法实际上也是调用的list.remove()，但多了expectedModCount = modCount的操作。</p>
+<pre><code class="language-java">SharedPreferences prefs = context.getSharedPreferences(&quot;pref_conf&quot;, Context.MODE_PRIVATE);
+String str = prefs.getString(&quot;pref_user_city&quot;, &quot;&quot;);
+</code></pre></li>
+</ul>
 
-<h2 id="toc_2">多线程环境下解决办法</h2>
+<h2 id="toc_2">参考</h2>
 
-<p>将ArrayList改为Vector并不能解决问题，因为Vector继承自AbstractList，所以通过Iterator来访问容器时，并不需要获取锁。因此会出现多个线程同时操作一个容器的情况，可能会导致某个线程中的expectedModCount与modCount不相等。</p>
-
-<p>2种解决办法：<br/>
-1. 通过Iterator迭代的时候使用synchronized或lock进行同步；<br/>
-2. 使用并发容器CopyOnWriteArrayList代替ArrayList和Vector。</p>
-
-<h2 id="toc_3">参考</h2>
-
-<p><a href="http://www.cnblogs.com/dolphin0520/p/3933551.html">Java ConcurrentModificationException异常原因和解决方法</a></p>
+<p><a href="http://blog.csdn.net/justFWD/article/details/51483889">Android多用户模式的特性</a><br/>
+<a href="https://arsenb.wordpress.com/2014/09/30/android-multiuser-model-architecture-and-related-security-threats/">Android multiuser model architecture and related security threats</a><br/>
+<a href="http://dengzhangtao.iteye.com/blog/1989065">Android的权限机制之—— “沙箱”机制sharedUserId和签名</a><br/>
+<a href="http://glblong.blog.51cto.com/3058613/1561239">Android笔记:AndroidManifest.xml属性详解(一)之sharedUserId</a><br/>
+<a href="https://www.zhihu.com/question/40652747">Android关于android:sharedUserId和android:process的疑问？</a><br/>
+<a href="http://wenzongliang.iteye.com/blog/1264592">apk，task，进程区别</a><br/>
+<a href="http://gityuan.com/2015/10/11/ps-command/">ps进程命令</a></p>
 
 
     
@@ -170,16 +211,13 @@
         <div class="large-6 columns">
         <p class="text-left" style="padding:15px 0px;">
       
-          <a href="14869139713567.html" 
-          title="Previous Post: 并发容器、阻塞队列">&laquo; 并发容器、阻塞队列</a>
-      
         </p>
         </div>
         <div class="large-6 columns">
       <p class="text-right" style="padding:15px 0px;">
       
-          <a  href="14868881967335.html" 
-          title="Next Post: 同步容器">同步容器 &raquo;</a>
+          <a  href="14896792625990.html" 
+          title="Next Post: 线程间协作wait/notify、Condition">线程间协作wait/notify、Condition &raquo;</a>
       
       </p>
         </div>
@@ -202,7 +240,7 @@
           
 
           
-              <div class="ds-thread" data-thread-key="14868914180518.html" data-url="http://www.felixyan.com/14868914180518.html" data-title="ConcurrentModificationException异常"></div>
+              <div class="ds-thread" data-thread-key="14900694280421.html" data-url="http://www.felixyan.com/14900694280421.html" data-title="Android多用户及sharedUserId"></div>
           
         </div>
       </div>
