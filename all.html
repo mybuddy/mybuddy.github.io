@@ -87,6 +87,8 @@
             <li><a href="Android.html">Android</a></li>
         
             <li><a href="%E6%8C%81%E7%BB%AD%E9%9B%86%E6%88%90.html">持续集成</a></li>
+        
+            <li><a href="%E5%8C%85%E7%AE%A1%E7%90%86%E4%BB%93%E5%BA%93.html">包管理仓库</a></li>
          
 
       </ul>
@@ -108,6 +110,101 @@
 	<div class="large-8 medium-8 columns">
 		<div class="markdown-body home-categories">
 		
+			<div class="article">
+                <a class="clearlink" href="14931813458739.html">
+                
+                  <h1>搭建Artifactory包管理仓库</h1>
+                  <div class="a-content">
+                      
+                      <div class="a-content-text">
+                        
+                        	<h2 id="toc_0">1. maven 库管理软件介绍</h2>
+
+<p>Sonatype 和 bintray 都提供了可供自己部署的 maven 库管理软件。<br/>
+Sonatype 提供了免费的sonatype/nexus，bintray 提供了免费的artifactory-oss。</p>
+
+<h2 id="toc_1">2. 安装及配置</h2>
+
+<p>系统环境CentOS release 6.7 (Final)。</p>
+
+<p>这里使用<a href="https://bitnami.com/">bitnami</a>的应用快速部署服务。</p>
+
+<ol>
+<li>下载一键安装包<br/>
+在<a href="https://bintray.com/jfrog/artifactory-rpms/jfrog-artifactory-oss-rpm">这里</a>下载针对CentOS系统的jfrog-artifactory-oss的一键安装包。</li>
+<li>安装<br/>
+执行下载的rpm包完成安装。</li>
+<li><p>状态/启动/停止/重启</p>
+
+<pre><code class="language-shell"># 查看artifactory服务总体的状态、启动、停止、重启
+artifactory-dir/ctlscript.sh status/start/stop/restart
+
+# 查看apache服务的状态、启动、停止、重启
+artifactory-dir/ctlscript.sh status/start/stop/restart apache
+
+# 查看tomcat服务的状态、启动、停止、重启
+artifactory-dir/ctlscript.sh status/start/stop/restart tomcat
+</code></pre></li>
+<li><p>配置<br/>
+<a href="https://inthecheesefactory.com/blog/how-to-setup-private-maven-repository/en">Artifactory基本配置、aar打包上传</a><br/>
+<a href="http://jeroenmols.com/blog/2015/08/13/artifactory2/">Artifactory安全配置、包pom依赖配置</a></p></li>
+</ol>
+
+<blockquote>
+<p>附：<br/>
+<a href="https://docs.bitnami.com/installer/apps/artifactory/">Bitnami JFrog Artifactory帮助文档</a></p>
+</blockquote>
+
+<h2 id="toc_2">3. JFrog Artifactory中的repository类别</h2>
+
+<pre><code class="language-xml">libs-release-local = Your code releases
+libs-snapshot-local= Your code snapshots
+ext-release-local = Manually deployed 3rd party libs (releases)
+ext-snapshot-local = Manually deployed 3rd party libs (shapshots)
+plugins-release-local = Your and 3rd party plugins (releases)
+plugins-snapshot-local =  Your and 3rd party plugins (snapshots)
+</code></pre>
+
+<p>参考：<br/>
+<a href="http://stackoverflow.com/questions/34845201/what-should-be-stored-in-plugins-release-local-and-plugins-snapshot-local-re">What should be stored in “plugins-release-local” and “plugins-snapshot-local” repository</a></p>
+
+<h2 id="toc_3">4. gradle打包上传相关命令</h2>
+
+<pre><code class="language-shell"># 打包aar并发布
+./gradlew assembleRelease artifactoryPublish
+
+# 清空gradle缓存
+./gradlew clean --refresh-dependencies
+
+# 查看依赖树
+./gradlew app:dependencies
+</code></pre>
+
+                        
+                      </div>
+                  </div>
+                </a>
+                <div class="read-more clearfix">
+                  <div class="more-left left">
+                  
+                    <span class="date">2017/4/26 12:35 下午</span>
+                    <span>posted in&nbsp;</span> 
+          				  
+          					    <span class="posted-in"><a href='%E5%8C%85%E7%AE%A1%E7%90%86%E4%BB%93%E5%BA%93.html'>包管理仓库</a></span>
+          				   
+                  </div>
+                  <div class="more-right right">
+                  <span class="comments">
+                      
+
+                      
+                        &nbsp;<a  class="ds-thread-count" data-thread-key="14931813458739.html" data-count-type="comments" href="14931813458739.html#ds-thread"></a>
+                       
+                  </span>
+                  </div>
+                </div>
+              </div><!-- article -->
+        
 			<div class="article">
                 <a class="clearlink" href="14931812922825.html">
                 
@@ -536,49 +633,6 @@ String str = prefs.getString(&quot;pref_user_city&quot;, &quot;&quot;);
                 </div>
               </div><!-- article -->
         
-			<div class="article">
-                <a class="clearlink" href="14890753595223.html">
-                
-                  <h1>UML</h1>
-                  <div class="a-content">
-                      
-                      <div class="a-content-text">
-                        
-                        	<h2 id="toc_0">表示方式</h2>
-
-<p>UML中描述对象和类之间相互关系的方式包括：</p>
-
-<ul>
-<li>依赖（Dependency）。虚线+箭头，指向被依赖元素。<br/>
-<img src="http://images2015.cnblogs.com/blog/285763/201602/285763-20160228232305960-1330516318.jpg" alt="依赖"/></li>
-</ul>
-
-
-                        
-                      </div>
-                  </div>
-                </a>
-                <div class="read-more clearfix">
-                  <div class="more-left left">
-                   <a href="14890753595223.html">Read more</a>&nbsp;&nbsp; 
-                    <span class="date">2017/3/10 0:2 上午</span>
-                    <span>posted in&nbsp;</span> 
-          				  
-          					    <span class="posted-in"><a href='%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F.html'>设计模式</a></span>
-          				   
-                  </div>
-                  <div class="more-right right">
-                  <span class="comments">
-                      
-
-                      
-                        &nbsp;<a  class="ds-thread-count" data-thread-key="14890753595223.html" data-count-type="comments" href="14890753595223.html#ds-thread"></a>
-                       
-                  </span>
-                  </div>
-                </div>
-              </div><!-- article -->
-        
               
 
 
@@ -642,6 +696,8 @@ String str = prefs.getString(&quot;pref_user_city&quot;, &quot;&quot;);
             <a href="Android.html"><strong>Android</strong></a>
         
             <a href="%E6%8C%81%E7%BB%AD%E9%9B%86%E6%88%90.html"><strong>持续集成</strong></a>
+        
+            <a href="%E5%8C%85%E7%AE%A1%E7%90%86%E4%BB%93%E5%BA%93.html"><strong>包管理仓库</strong></a>
          
         </p>
 
@@ -656,6 +712,12 @@ String str = prefs.getString(&quot;pref_user_city&quot;, &quot;&quot;);
                 <div class="side-content">
                 <ul class="posts-list">
 	      
+		      
+			      <li class="post">
+			        <a href="14931813458739.html">搭建Artifactory包管理仓库</a>
+			      </li>
+		     
+		  
 		      
 			      <li class="post">
 			        <a href="14931812922825.html">【篇二】BuildTools更新到24.0.3遇到的问题</a>
@@ -677,12 +739,6 @@ String str = prefs.getString(&quot;pref_user_city&quot;, &quot;&quot;);
 		      
 			      <li class="post">
 			        <a href="14927566576566.html">【篇四】通过Jenkins打包ReactNative APP</a>
-			      </li>
-		     
-		  
-		      
-			      <li class="post">
-			        <a href="14900694280421.html">Android多用户及sharedUserId</a>
 			      </li>
 		     
 		  

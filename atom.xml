@@ -4,13 +4,84 @@
   <title><![CDATA[yanfei's tick tock]]></title>
   <link href="http://www.felixyan.com/atom.xml" rel="self"/>
   <link href="http://www.felixyan.com/"/>
-  <updated>2017-05-02T08:58:19+08:00</updated>
+  <updated>2017-05-02T09:06:11+08:00</updated>
   <id>http://www.felixyan.com/</id>
   <author>
     <name><![CDATA[]]></name>
     
   </author>
   <generator uri="http://www.mweb.im/">MWeb</generator>
+  
+  <entry>
+    <title type="html"><![CDATA[搭建Artifactory包管理仓库]]></title>
+    <link href="http://www.felixyan.com/14931813458739.html"/>
+    <updated>2017-04-26T12:35:45+08:00</updated>
+    <id>http://www.felixyan.com/14931813458739.html</id>
+    <content type="html"><![CDATA[
+<h2 id="toc_0">1. maven 库管理软件介绍</h2>
+
+<p>Sonatype 和 bintray 都提供了可供自己部署的 maven 库管理软件。<br/>
+Sonatype 提供了免费的sonatype/nexus，bintray 提供了免费的artifactory-oss。</p>
+
+<h2 id="toc_1">2. 安装及配置</h2>
+
+<p>系统环境CentOS release 6.7 (Final)。</p>
+
+<p>这里使用<a href="https://bitnami.com/">bitnami</a>的应用快速部署服务。</p>
+
+<ol>
+<li>下载一键安装包<br/>
+在<a href="https://bintray.com/jfrog/artifactory-rpms/jfrog-artifactory-oss-rpm">这里</a>下载针对CentOS系统的jfrog-artifactory-oss的一键安装包。</li>
+<li>安装<br/>
+执行下载的rpm包完成安装。</li>
+<li><p>状态/启动/停止/重启</p>
+
+<pre><code class="language-shell"># 查看artifactory服务总体的状态、启动、停止、重启
+artifactory-dir/ctlscript.sh status/start/stop/restart
+
+# 查看apache服务的状态、启动、停止、重启
+artifactory-dir/ctlscript.sh status/start/stop/restart apache
+
+# 查看tomcat服务的状态、启动、停止、重启
+artifactory-dir/ctlscript.sh status/start/stop/restart tomcat
+</code></pre></li>
+<li><p>配置<br/>
+<a href="https://inthecheesefactory.com/blog/how-to-setup-private-maven-repository/en">Artifactory基本配置、aar打包上传</a><br/>
+<a href="http://jeroenmols.com/blog/2015/08/13/artifactory2/">Artifactory安全配置、包pom依赖配置</a></p></li>
+</ol>
+
+<blockquote>
+<p>附：<br/>
+<a href="https://docs.bitnami.com/installer/apps/artifactory/">Bitnami JFrog Artifactory帮助文档</a></p>
+</blockquote>
+
+<h2 id="toc_2">3. JFrog Artifactory中的repository类别</h2>
+
+<pre><code class="language-xml">libs-release-local = Your code releases
+libs-snapshot-local= Your code snapshots
+ext-release-local = Manually deployed 3rd party libs (releases)
+ext-snapshot-local = Manually deployed 3rd party libs (shapshots)
+plugins-release-local = Your and 3rd party plugins (releases)
+plugins-snapshot-local =  Your and 3rd party plugins (snapshots)
+</code></pre>
+
+<p>参考：<br/>
+<a href="http://stackoverflow.com/questions/34845201/what-should-be-stored-in-plugins-release-local-and-plugins-snapshot-local-re">What should be stored in “plugins-release-local” and “plugins-snapshot-local” repository</a></p>
+
+<h2 id="toc_3">4. gradle打包上传相关命令</h2>
+
+<pre><code class="language-shell"># 打包aar并发布
+./gradlew assembleRelease artifactoryPublish
+
+# 清空gradle缓存
+./gradlew clean --refresh-dependencies
+
+# 查看依赖树
+./gradlew app:dependencies
+</code></pre>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[【篇二】BuildTools更新到24.0.3遇到的问题]]></title>
@@ -693,7 +764,7 @@ sudo yum install libgcc.i686
 
 <h2 id="toc_29">构建环境</h2>
 
-<p><img src="media/14927588460540/%E8%AF%84%E4%BC%B0%E5%B8%88%E6%9E%84%E5%BB%BA%E7%8E%AF%E5%A2%83.png" alt="构建环境"/></p>
+<p><img src="media/14927588460540/%E6%9E%84%E5%BB%BA%E7%8E%AF%E5%A2%83.png" alt=""/></p>
 
 <h2 id="toc_30">构建</h2>
 
@@ -2717,134 +2788,6 @@ Double.doubleToRawLongBits(double value);
 // 取的时候，将long类型表示的二进制位格式转换成double
 Double.longBitsToDouble(long value);
 </code></pre>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[进程、线程基础]]></title>
-    <link href="http://www.felixyan.com/14869801736885.html"/>
-    <updated>2017-02-13T18:02:53+08:00</updated>
-    <id>http://www.felixyan.com/14869801736885.html</id>
-    <content type="html"><![CDATA[
-<h2 id="toc_0">1. 基本概念</h2>
-
-<p>进程：每个进程对应一个程序，<strong>对应一定的内存地址空间</strong>，且只能使用其自己的内存空间，进程间互不干扰。进程保存了程序每个时刻的运行状态，进程暂停时会保存其当前的状态（进程标识、进程使用的资源等），下次切换回来时，根据之前保存的状态进行恢复，然后继续执行。</p>
-
-<span id="more"></span><!-- more -->
-
-<p>线程：一个进程包含多个线程，但这些<strong>线程共享进程占用的资源和地址空间</strong>。</p>
-
-<p><strong>进程</strong>是操作系统进行<strong>资源分配</strong>的基本单位，而<strong>线程</strong>是操作系统进行<strong>调度</strong>的基本单位。</p>
-
-<p>进程使得操作系统的并发性成为可能，而线程使得进程内部的并发成为可能。</p>
-
-<h2 id="toc_1">2. Java中的进程、线程</h2>
-
-<p>Java中，<strong>一个应用程序对应一个JVM实例</strong>（亦称JVM进程），名字一般默认为java.exe或javaw.exe。</p>
-
-<p>Java采用<strong>单线程编程模型</strong>，即程序中没有主动创建线程的话，默认只会创建一个线程，称为主线程，但不代表JVM中只有一个线程，JVM实例在创建的时候，会同时创建很多其他线程（如垃圾收集器线程）。</p>
-
-<h3 id="toc_2">Java中创建线程</h3>
-
-<p>2种方式，1. 继承Thread类；2. 实现Runnable接口。</p>
-
-<h3 id="toc_3">Java中创建进程</h3>
-
-<p>2种方式：</p>
-
-<ol>
-<li><p>通过ProcessBuilder.start方法创建；<br/>
-ProcessBuilder.start方法中调用了ProcessImpl.start方法，ProcessImpl类本身继承了Process类，而在ProcessImpl.start方法中new了一个ProcessImpl实例并返回。</p></li>
-<li><p>通过Runtime.exec方法创建。<br/>
-Runtime.exec方法中调用了ProcessBuilder.start方法。<strong>Runtime，即运行时，表示当前进程所在的虚拟机实例。</strong></p></li>
-</ol>
-
-<p>用法：</p>
-
-<ol>
-<li><p>通过ProcessBuilder.start方法</p>
-
-<pre><code class="language-java">ProcessBuilder pb = new ProcessBuilder(&quot;cmd&quot;,&quot;/c&quot;,&quot;ipconfig/all&quot;);
-Process process = pb.start();
-Scanner scanner = new Scanner(process.getInputStream());
-
-while(scanner.hasNextLine()){
-  System.out.println(scanner.nextLine());
-}
-scanner.close();
-</code></pre></li>
-<li><p>通过Runtime.exec方法</p>
-
-<pre><code class="language-java">String cmd = &quot;cmd &quot;+&quot;/c &quot;+&quot;ipconfig/all&quot;;
-Process process = Runtime.getRuntime().exec(cmd); // 单例方式获取Runtime实例
-Scanner scanner = new Scanner(process.getInputStream());
-
-while(scanner.hasNextLine()){
-  System.out.println(scanner.nextLine());
-}
-scanner.close();
-</code></pre></li>
-</ol>
-
-<h2 id="toc_4">3. Thread类的使用</h2>
-
-<p>线程的状态及对应的方法<br/>
-<img src="http://images.cnitblog.com/blog/288799/201409/061046391107893.jpg" alt="线程的状态及对应的方法"/></p>
-
-<h3 id="toc_5">线程的状态</h3>
-
-<p><strong>线程包括5个状态：创建（new）、就绪（runnable）、运行（running）、阻塞（blocked）[time waiting、waiting]、消亡（dead）。</strong></p>
-
-<p>线程的创建状态，new一个线程。</p>
-
-<p><strong>线程创建后，不会立即进入就绪状态</strong>，因为线程运行需要一些条件（如内存资源，线程私有的程序计数器、Java栈、本地方法栈），只有条件满足了才进入就绪状态。调用start方法会为线程分配需要的资源。</p>
-
-<p>线程进入就绪状态后，不代表立即能获取CPU执行时间，当得到CPU执行时间后，才进入运行状态。</p>
-
-<p>线程运行过程中，可能有多个原因导致线程无法继续运行，如sleep()、join()/wait()、同步块阻塞。对应time waiting、waiting、blocked状态。</p>
-
-<h3 id="toc_6">上下文切换</h3>
-
-<p>线程的上下文切换实际上就是<strong>存储和恢复CPU状态的过程</strong>，它使得线程能够从中断点恢复执行。</p>
-
-<h3 id="toc_7">Thread类中的方法</h3>
-
-<p>线程优先级：最大10，最小1，默认5。</p>
-
-<p>线程运行相关方法：</p>
-
-<ol>
-<li>start。<br/>
-启动一个线程，为线程分配需要的资源。</li>
-<li>run。</li>
-<li>sleep。<br/>
-交出CPU，进入<strong>阻塞状态，不释放锁</strong>。</li>
-<li>yield。<br/>
-交出CPU，重回<strong>就绪状态，不释放锁</strong>。</li>
-<li>join。<br/>
-等待thread执行完毕或等待指定时间，内部使用wait实现。交出CPU，进入<strong>阻塞状态，释放锁</strong>。</li>
-<li>interrupt。<br/>
-<strong>中断处于阻塞状态的线程</strong>（使其抛出中断异常）。</li>
-</ol>
-
-<p>线程属性相关方法：</p>
-
-<ol>
-<li>getId。</li>
-<li>getName、setName。</li>
-<li>getPriority、setPriority。</li>
-<li>setDaemon、isDaemon。
-<strong>守护线程依赖于创建它的线程，而用户线程不依赖。</strong>创建守护线程的线程运行完毕后，守护线程也会随之消亡，而用户线程会一直运行到其结束。</li>
-</ol>
-
-<p>获取当前线程的静态方法Thread.currentThread()。</p>
-
-<h2 id="toc_8">参考</h2>
-
-<p><a href="http://www.cnblogs.com/dolphin0520/p/3910667.html">Java多线程基础：进程和线程之由来</a> <br/>
-<a href="http://www.cnblogs.com/dolphin0520/p/3913517.html">Java并发编程：如何创建线程？</a><br/>
-<a href="http://www.cnblogs.com/dolphin0520/p/3920357.html">Java并发编程：Thread类的使用</a></p>
 
 ]]></content>
   </entry>

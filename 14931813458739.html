@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>
     
-  同步容器 - yanfei's tick tock
+  搭建Artifactory包管理仓库 - yanfei's tick tock
   
   </title>
   
@@ -111,21 +111,21 @@
       <div class="markdown-body article-wrap">
        <div class="article">
           
-          <h1>同步容器</h1>
+          <h1>搭建Artifactory包管理仓库</h1>
      
         <div class="read-more clearfix">
-          <span class="date">2017/2/12 16:29 下午</span>
+          <span class="date">2017/4/26 12:35 下午</span>
 
           <span>posted in&nbsp;</span> 
           
-              <span class="posted-in"><a href='%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B.html'>并发编程</a></span>
+              <span class="posted-in"><a href='%E5%8C%85%E7%AE%A1%E7%90%86%E4%BB%93%E5%BA%93.html'>包管理仓库</a></span>
            
          
           <span class="comments">
             
 
             
-              &nbsp;<a  class="ds-thread-count" data-thread-key="14868881967335.html" data-count-type="comments" href="14868881967335.html#ds-thread"></a>
+              &nbsp;<a  class="ds-thread-count" data-thread-key="14931813458739.html" data-count-type="comments" href="14931813458739.html#ds-thread"></a>
             
           </span>
 
@@ -133,45 +133,67 @@
       </div><!-- article -->
 
       <div class="article-content">
-      <h2 id="toc_0">线程安全相关类、并发工具</h2>
+      <h2 id="toc_0">1. maven 库管理软件介绍</h2>
 
-<p>同步容器、并发容器、阻塞队列、Synchronizer（如CountDownLatch）。</p>
+<p>Sonatype 和 bintray 都提供了可供自己部署的 maven 库管理软件。<br/>
+Sonatype 提供了免费的sonatype/nexus，bintray 提供了免费的artifactory-oss。</p>
 
-<span id="more"></span><!-- more -->
+<h2 id="toc_1">2. 安装及配置</h2>
 
-<h2 id="toc_1">集合容器框架</h2>
+<p>系统环境CentOS release 6.7 (Final)。</p>
 
-<p>Java集合容器框架，4大类别（均为接口）：List、Set、Queue、Map。<br/>
-前3者继承了顶级接口Collection，Map本身是一个顶级接口。</p>
-
-<p>ArrayList：实现了List。<br/>
-<strong>LinkedList：</strong>双向链表，实现了List、Deque。<br/>
-HashSet：实现了Set。<br/>
-<strong>Deque：</strong>双向队列，允许队首、队尾进行入队出队操作，继承了Queue。<br/>
-PriorityQueue：实现了Queue。</p>
-
-<h2 id="toc_2">同步容器</h2>
-
-<h3 id="toc_3">类别</h3>
+<p>这里使用<a href="https://bitnami.com/">bitnami</a>的应用快速部署服务。</p>
 
 <ol>
-<li>Vector（类似ArrayList）、<strong>Stack（继承Vector）</strong>、HashTable（类似HashMap）</li>
-<li>Collections静态工程方法创建的类，如synchronizedCollection、synchronizedList等</li>
+<li>下载一键安装包<br/>
+在<a href="https://bintray.com/jfrog/artifactory-rpms/jfrog-artifactory-oss-rpm">这里</a>下载针对CentOS系统的jfrog-artifactory-oss的一键安装包。</li>
+<li>安装<br/>
+执行下载的rpm包完成安装。</li>
+<li><p>状态/启动/停止/重启</p>
+
+<pre><code class="language-shell"># 查看artifactory服务总体的状态、启动、停止、重启
+artifactory-dir/ctlscript.sh status/start/stop/restart
+
+# 查看apache服务的状态、启动、停止、重启
+artifactory-dir/ctlscript.sh status/start/stop/restart apache
+
+# 查看tomcat服务的状态、启动、停止、重启
+artifactory-dir/ctlscript.sh status/start/stop/restart tomcat
+</code></pre></li>
+<li><p>配置<br/>
+<a href="https://inthecheesefactory.com/blog/how-to-setup-private-maven-repository/en">Artifactory基本配置、aar打包上传</a><br/>
+<a href="http://jeroenmols.com/blog/2015/08/13/artifactory2/">Artifactory安全配置、包pom依赖配置</a></p></li>
 </ol>
 
-<h3 id="toc_4">缺陷</h3>
+<blockquote>
+<p>附：<br/>
+<a href="https://docs.bitnami.com/installer/apps/artifactory/">Bitnami JFrog Artifactory帮助文档</a></p>
+</blockquote>
 
-<ol>
-<li>性能问题。为解决该问题，Java 1.5提供了并发容器。</li>
-<li>仍存在线程不安全。一个线程vector.get(i)前，另一个线程vector.remove(i)，造成数组下标越界。</li>
-<li>ConcurrentModificationException。</li>
-</ol>
+<h2 id="toc_2">3. JFrog Artifactory中的repository类别</h2>
 
-<h3 id="toc_5">参考</h3>
+<pre><code class="language-xml">libs-release-local = Your code releases
+libs-snapshot-local= Your code snapshots
+ext-release-local = Manually deployed 3rd party libs (releases)
+ext-snapshot-local = Manually deployed 3rd party libs (shapshots)
+plugins-release-local = Your and 3rd party plugins (releases)
+plugins-snapshot-local =  Your and 3rd party plugins (snapshots)
+</code></pre>
 
-<p><a href="http://www.cnblogs.com/dolphin0520/p/3933404.html">http://www.cnblogs.com/dolphin0520/p/3933404.html</a><br/>
-《深入理解Java虚拟机》<br/>
-《Java并发编程实战》</p>
+<p>参考：<br/>
+<a href="http://stackoverflow.com/questions/34845201/what-should-be-stored-in-plugins-release-local-and-plugins-snapshot-local-re">What should be stored in “plugins-release-local” and “plugins-snapshot-local” repository</a></p>
+
+<h2 id="toc_3">4. gradle打包上传相关命令</h2>
+
+<pre><code class="language-shell"># 打包aar并发布
+./gradlew assembleRelease artifactoryPublish
+
+# 清空gradle缓存
+./gradlew clean --refresh-dependencies
+
+# 查看依赖树
+./gradlew app:dependencies
+</code></pre>
 
 
     
@@ -182,13 +204,13 @@ PriorityQueue：实现了Queue。</p>
         <div class="large-6 columns">
         <p class="text-left" style="padding:15px 0px;">
       
-          <a href="14868914180518.html" 
-          title="Previous Post: ConcurrentModificationException异常">&laquo; ConcurrentModificationException异常</a>
-      
         </p>
         </div>
         <div class="large-6 columns">
       <p class="text-right" style="padding:15px 0px;">
+      
+          <a  href="14931812922825.html" 
+          title="Next Post: 【篇二】BuildTools更新到24.0.3遇到的问题">【篇二】BuildTools更新到24.0.3遇到的问题 &raquo;</a>
       
       </p>
         </div>
@@ -211,7 +233,7 @@ PriorityQueue：实现了Queue。</p>
           
 
           
-              <div class="ds-thread" data-thread-key="14868881967335.html" data-url="http://www.felixyan.com/14868881967335.html" data-title="同步容器"></div>
+              <div class="ds-thread" data-thread-key="14931813458739.html" data-url="http://www.felixyan.com/14931813458739.html" data-title="搭建Artifactory包管理仓库"></div>
           
         </div>
       </div>
