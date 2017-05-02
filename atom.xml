@@ -4,13 +4,821 @@
   <title><![CDATA[yanfei's tick tock]]></title>
   <link href="http://www.felixyan.com/atom.xml" rel="self"/>
   <link href="http://www.felixyan.com/"/>
-  <updated>2017-03-21T18:45:42+08:00</updated>
+  <updated>2017-05-02T08:58:19+08:00</updated>
   <id>http://www.felixyan.com/</id>
   <author>
     <name><![CDATA[]]></name>
     
   </author>
   <generator uri="http://www.mweb.im/">MWeb</generator>
+  
+  <entry>
+    <title type="html"><![CDATA[【篇二】BuildTools更新到24.0.3遇到的问题]]></title>
+    <link href="http://www.felixyan.com/14931812922825.html"/>
+    <updated>2017-04-26T12:34:52+08:00</updated>
+    <id>http://www.felixyan.com/14931812922825.html</id>
+    <content type="html"><![CDATA[
+<h2 id="toc_0">1. 错误</h2>
+
+<p>Android build tools更新到24.0.3后，使用Jenkins打包，报以下错误，但在本地打包时一切正常。</p>
+
+<pre><code>AAPT err(Facade for 555668920): /var/lib/jenkins/.android-sdk/build-tools/24.0.3/aapt: /lib64/libc.so.6: version &#39;GLIBC_2.14&#39; not found (required by /var/lib/jenkins/.android-sdk/build-tools/24.0.3/aapt)
+</code></pre>
+
+<span id="more"></span><!-- more -->
+
+<h2 id="toc_1">2. 原因</h2>
+
+<p>报此错误原因是由于打包服务器的CentOS系统版本太老（CentOS 6.7 Final），AAPT需要2.14版本的glibc库，而系统最高支持到2.12版本（使用yum能够获取到的最新版本为2.12），所以只能升级系统到新版本或者下载glibc的源码手动编译安装。</p>
+
+<p>通过以下命令查看当前系统glibc支持的版本：</p>
+
+<pre><code class="language-shell">strings /lib/libc.so.6 | grep GLIBC
+</code></pre>
+
+<pre><code class="language-shell">GLIBC_2.0
+GLIBC_2.1
+GLIBC_2.1.1
+GLIBC_2.1.2
+GLIBC_2.1.3
+GLIBC_2.2
+GLIBC_2.2.1
+GLIBC_2.2.2
+GLIBC_2.2.3
+GLIBC_2.2.4
+GLIBC_2.2.6
+GLIBC_2.3
+GLIBC_2.3.2
+GLIBC_2.3.3
+GLIBC_2.3.4
+GLIBC_2.4
+GLIBC_2.5
+GLIBC_2.6
+GLIBC_2.7
+GLIBC_2.8
+GLIBC_2.9
+GLIBC_2.10
+GLIBC_2.11
+GLIBC_2.12
+GLIBC_PRIVATE
+</code></pre>
+
+<p>参考：</p>
+
+<ul>
+<li><a href="http://stackoverflow.com/questions/34299633/android-studio-not-communicating-with-adb-glibc-not-found-error#34332759">Android Studio not communicating with adb GLIBC … not found error</a></li>
+<li><a href="https://code.google.com/p/android/issues/detail?id=197074">adb fails to run on CentOS 6.7 (GLIBC_2.14, GLIBC2_15 not found)</a></li>
+</ul>
+
+<h2 id="toc_2">3. 解决</h2>
+
+<h3 id="toc_3">3.1 下载glibc源码编译安装。</h3>
+
+<ol>
+<li><p>到 <a href="http://www.gnu.org/software/libc/">http://www.gnu.org/software/libc/</a> 下载新版本的glibc，这里下载了<a href="http://mirror.bjtu.edu.cn/gnu/libc/glibc-2.14.tar.xz">glibc-2.14.tar.xz</a>这个版本，解压到任意目录准备编译</p>
+
+<pre><code class="language-shell">tar xvJf glibc-2.14.tar.xz
+</code></pre></li>
+<li><p>在glibc源码目录建立构建目录，并cd进入构建目录</p>
+
+<pre><code class="language-shell">mkdir build
+
+cd build
+</code></pre></li>
+<li><p>运行configure配置，make &amp;&amp; sudo make install</p>
+
+<pre><code class="language-shell"># prefix后是输出的目录
+../configure --prefix=/opt/glibc-2.14
+
+make -j4
+
+sudo make install
+</code></pre></li>
+</ol>
+
+<p>参考:</p>
+
+<ul>
+<li><a href="http://blog.csdn.net/cpplang/article/details/8462768">解决libc.so.6: version `GLIBC_2.14&#39; not found问题</a></li>
+</ul>
+
+<h3 id="toc_4">3.2 修改24.0.3 Build Tools下的lib64目录</h3>
+
+<ol>
+<li>将<code>android-sdk/build-tools/24.0.3/lib64</code>下的文件复制到上一步安装完成的<code>/opt/glibc-2.14/lib</code>目录下</li>
+<li>修改<code>android-sdk/build-tools/24.0.3/lib64</code>文件名（如修改为lib64_bak）</li>
+<li>设置软链接将<code>android-sdk/build-tools/24.0.3/lib64</code>指向上一步安装完成的<code>/opt/glibc-2.14/lib</code>目录</li>
+</ol>
+
+<blockquote>
+<p>By installing the missing dependency, what I did on one of our RedHat 6 boxes was to compile the glibc v2.14 library locally, then symlink the <androidhome>/build-tools/24.0.0/lib64 directory to that completed build (this also requires you to move what is currently in that lib64 into the compiled directory prior to linking against the new one).</p>
+
+<p>Here are some basic instructions for install. You may want to adjust the version to .14 rather than .16 that these instructions call out.<br/>
+<a href="https://github.com/FezVrasta/ark-server-tools/wiki/Install-of-required-versions-of-glibc-and-gcc-on-RHEL-CentOS">https://github.com/FezVrasta/ark-server-tools/wiki/Install-of-required-versions-of-glibc-and-gcc-on-RHEL-CentOS</a></p>
+</blockquote>
+
+<p>参考：</p>
+
+<ul>
+<li><a href="https://code.google.com/p/android/issues/detail?id=213179">If aapt threads crash the plugin waits forever for them to (never) complete</a></li>
+<li><a href="https://github.com/FezVrasta/ark-server-tools/wiki/Install-of-required-versions-of-glibc-and-gcc-on-RHEL-CentOS">Install of required versions of glibc and gcc on RHEL CentOS</a></li>
+</ul>
+
+<h2 id="toc_5">其他参考</h2>
+
+<p><a href="http://www.cnblogs.com/zyw-205520/p/4900689.html">查看CentOS版本方法</a><br/>
+<a href="http://blog.csdn.net/silvervi/article/details/6325698">Linux下tar.xz结尾的文件的解压方法</a></p>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[【篇三】通过Jenkins打包时自动加固APK]]></title>
+    <link href="http://www.felixyan.com/14931809109588.html"/>
+    <updated>2017-04-26T12:28:30+08:00</updated>
+    <id>http://www.felixyan.com/14931809109588.html</id>
+    <content type="html"><![CDATA[
+<p>这里加固使用了360加固保。</p>
+
+<ul>
+<li><a href="http://jiagu.360.cn/qcms/help.html">官网文档戳这里</a></li>
+<li>加固保客户端：官网提供了Windows、Mac的加固保客户端下载地址，也可通过网页在线加固。Linux版加固保客户端，由于一直未维护，官网未提供下载地址。</li>
+<li>获取Linux版加固保客户端：通过邮箱（<a href="mailto:360jiagubao@360.cn">360jiagubao@360.cn</a>）或QQ群（群号：93070407）索取。【实测邮箱无人回复，QQ群比较靠谱】</li>
+</ul>
+
+<span id="more"></span><!-- more -->
+
+<h2 id="toc_0">1. 打包自动加固原理</h2>
+
+<p>在Jenkins打包服务器（CentOS）上安装Linux版加固保客户端，该客户端支持命令行方式调用，因此我们可以通过编写shell脚本并将该脚本置于Jenkins打包的流程中，以实现打包后自动加固的需求。</p>
+
+<h2 id="toc_1">2. 安装加固保客户端</h2>
+
+<p>将Linux版加固保客户端解压到打包服务器某一目录下即可。</p>
+
+<h2 id="toc_2">3. 编写加固脚本</h2>
+
+<p>该脚本用于调用Linux版加固保，为保证通用性，我们在调用该脚本时支持传递相关参数。</p>
+
+<p>支持的参数（调用脚本时需按顺序提供）：</p>
+
+<ol>
+<li>keystore_path：签名文件路径</li>
+<li>keystore_password：签名文件密码</li>
+<li>keystore_alias：别名</li>
+<li>keystore_alias_password：别名密码</li>
+<li>input_apk_path_filter：待加固apk路径，<strong>支持通配符</strong></li>
+<li>output_apk_dir：加固完成后apk输出目录</li>
+<li>enhancement_service：增加服务，可选“-x86”、“-update”、“-crashlog”。若不需要增强服务，请留空</li>
+</ol>
+
+<p><strong>加固保客户端的安装位置、用户名、密码，配置在脚本中，请根据实际情况进行配置。</strong></p>
+
+<p>然后将该脚本放到打包服务器的某一目录下，<strong>注意为该脚本添加Jenkins用户的可执行权限（如设置成755）</strong>。</p>
+
+<pre><code class="language-shell">#!/bin/bash
+# 自定义打印函数，-e支持输出转义字符，$@所有参数
+print(){
+    echo -e &quot;\n\n-----&gt;&quot;$@
+}
+# 筛选出最后修改的1个文件，-t按时间降序排列
+latestFile(){
+    ls -t &quot;$@&quot; | head -1
+}
+
+print &#39;【初始化】&#39;
+## 常量配置开始 ##
+# 用户名、密码
+user_name=&#39;your-jiagubao-user-name&#39;
+password=&#39;your-jiagubao-password&#39;
+
+# keystore
+keystore_path=$1
+keystore_password=$2
+keystore_alias=$3
+keystore_alias_password=$4
+
+# 输入/输出apk
+input_apk_path_filter=$5
+input_apk_path=$(latestFile $input_apk_path_filter)
+
+output_apk_dir=$6
+output_apk_name_filter=&#39;*jiagu_sign.apk&#39;
+output_apk_path_filter=&quot;${output_apk_dir}${output_apk_name_filter}&quot;
+
+print &quot;【待加固apk】${input_apk_path}&quot;
+
+# 增强服务
+enhancement_service=${7:-&#39;&#39;} # 若未向脚本提供该参数，则默认为空字符串&#39;&#39;
+
+# 加固保根目录
+jiagubao_dir=&#39;/dir/where/your/jiagu/script/locates/&#39; # 目录包含末尾斜线
+## 常量配置结束 ##
+
+cd $jiagubao_dir
+
+print &quot;【进入目录】 $PWD&quot;
+
+# 1. 登录
+print &quot;【登录】&quot;
+java/bin/java -jar jiagu.jar -login $user_name $password
+# 2. 导入keystore信息
+print &quot;【导入keystore信息】&quot;
+java/bin/java -jar jiagu.jar -importsign $keystore_path $keystore_password $keystore_alias $keystore_alias_password
+# 3. 配置增加服务，若不需要则跳过
+if [ &quot;$enhancement_service&quot; != &#39;&#39; ]
+then
+    print &quot;【配置增强服务】&quot;
+    java/bin/java -jar jiagu.jar -config $enhancement_service
+fi
+# 4. 加固
+print &quot;【加固】&quot;
+java/bin/java -jar jiagu.jar -jiagu $input_apk_path $output_apk_dir -autosign
+# 5. 输出结果
+output_apk=$(latestFile $output_apk_path_filter)
+print &quot;【加固完成apk】${output_apk}&quot;
+exit
+</code></pre>
+
+<h2 id="toc_3">4. 编写Jenkins中用于调用加固脚本的shell脚本</h2>
+
+<p>该脚本与每个待加固的APP对应，用于调用步骤3中编写的脚本。以下参数需要根据实际情况进行配置：</p>
+
+<ol>
+<li>Debug、Release版的签名文件信息</li>
+<li>待打包的apk所在目录</li>
+<li>加固前/后的apk路径过滤器</li>
+<li>增强服务</li>
+</ol>
+
+<p>脚本修改完后，需要在Jenkins中每个APP Job的“构建”下添加Execute shell，并将脚本内容添加到Command文本框中。<br/>
+<strong>注意：该Execute shell应该在打包apk完成后执行，即在Invoke Gradle script之后。</strong></p>
+
+<pre><code class="language-shell"># 【加固相关】
+
+set +x # 抑制输出脚本内容
+
+# 签名用keystore
+dbg_ks=&quot;${PWD}/apk/debug.keystore&quot;
+dbg_ks_psw=&#39;xxx&#39;
+dbg_ks_alias=&#39;debug&#39;
+dbg_ks_alias_psw=&#39;xxx&#39;
+
+rlse_ks=&quot;${PWD}/apk/xxx&quot;
+rlse_ks_psw=&#39;xxx&#39;
+rlse_ks_alias=&#39;xxx&#39;
+rlse_ks_alias_psw=&#39;xxx&#39;
+
+# apk目录
+apk_dir=&quot;${PWD}/app/build/outputs/apk/&quot; # 目录包含末尾斜线
+
+# 加固前/后apk path filter，用于获取满足filter的最后修改的apk
+input_apk_path_filter=&quot;${apk_dir}your-apk-name*.apk&quot;
+output_apk_path_filter=&quot;${apk_dir}your-apk-name*jiagu_sign.apk&quot;
+
+# 增强服务，可选“-x86”、“-update”、“-crashlog”，如不需要增强服务，请留空
+enhancement_service=&#39;&#39;
+
+if [ ${BuildType} == &#39;Release&#39; ]
+then
+    # 参数：keystore路径、keystore密码、keystore别名、keystore别名密码、待加固apk路径filter、加固后apk输出目录、增强服务
+    bash +ex /path/to/jiagu/script/on/server/xxx.sh $rlse_ks $rlse_ks_psw $rlse_ks_alias $rlse_ks_alias_psw $input_apk_path_filter $apk_dir $enhancement_service
+else
+    bash +ex /path/to/jiagu/script/on/server/xxx.sh $dbg_ks $dbg_ks_psw $dbg_ks_alias $dbg_ks_alias_psw $input_apk_path_filter $apk_dir $enhancement_service
+fi
+
+# 加固后的apk路径
+output_apk_path=$(ls -t $output_apk_path_filter | head -1)
+</code></pre>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[【篇一】搭建基于Jenkins的Android打包平台]]></title>
+    <link href="http://www.felixyan.com/14927588460540.html"/>
+    <updated>2017-04-21T15:14:06+08:00</updated>
+    <id>http://www.felixyan.com/14927588460540.html</id>
+    <content type="html"><![CDATA[
+<p>查看CentOS系统版本</p>
+
+<pre><code class="language-shell">cat /etc/redhat-release
+</code></pre>
+
+<p>下述内容针对<code>CentOS release 6.7 (Final)</code>版本系统展开。</p>
+
+<span id="more"></span><!-- more -->
+
+<h1 id="toc_0">1. 安装</h1>
+
+<p>安装步骤参考<a href="https://wiki.jenkins-ci.org/display/JENKINS/Installing+Jenkins+on+Red+Hat+distributions">官方文档</a>。</p>
+
+<h2 id="toc_1">1.1 安装Jenkins</h2>
+
+<pre><code class="language-shell">sudo wget -O /etc/yum.repos.d/jenkins.repo http://pkg.jenkins-ci.org/redhat/jenkins.repo
+
+sudo rpm --import https://jenkins-ci.org/redhat/jenkins-ci.org.key
+
+sudo yum install jenkins
+</code></pre>
+
+<h2 id="toc_2">1.2 安装Java</h2>
+
+<p>Jenkins使用Sun版本的Java，如CentOS预装了GCJ版本的Java，需要先卸载之，再安装与Sun版本兼容的OpenJDK。</p>
+
+<h3 id="toc_3">卸载GCJ</h3>
+
+<p>使用<code>java -version</code>命令查看当前安装的java版本，如出现类似以下信息，说明预装了GCJ版本的Java，需要执行<code>yum remove java</code>命令卸载。</p>
+
+<pre><code class="language-shell">java version &quot;1.5.0&quot;
+gij (GNU libgcj) version 4.4.6 20110731 (Red Hat 4.4.6-3)
+</code></pre>
+
+<h3 id="toc_4">安装OpenJDK并配置环境变量</h3>
+
+<p>Jenkins运行只需要JRE环境，但Android编译打包需要JDK环境，所以我们需要安装JDK环境（安装JDK时会自动安装JRE）。</p>
+
+<ol>
+<li><p>查找仓库中可安装的OpenJDK版本</p>
+
+<pre><code class="language-shell">sudo yum search openjdk
+</code></pre>
+
+<p>出现以下类似结果</p>
+
+<pre><code class="language-shell">java-1.8.0-openjdk-devel.x86_64 : OpenJDK Development Environment 
+</code></pre></li>
+<li><p>根据上一步结果，执行以下命令安装相应版本的JDK</p>
+
+<pre><code class="language-shell">sudo yum install java-1.8.0-openjdk-devel.x86_64 
+</code></pre></li>
+<li><p>配置环境变量</p>
+
+<pre><code class="language-shell">sudo vim /etc/profile
+</code></pre>
+
+<pre><code class="language-shell"># jdk
+export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk.x86_64
+export PATH=$PATH:$JAVA_HOME/bin 
+</code></pre>
+
+<pre><code class="language-shell">source /etc/profile
+</code></pre></li>
+</ol>
+
+<blockquote>
+<p>延伸：不安装jdk，打包时会报错<br/>
+A problem occurred evaluating project &#39;:app&#39;. com/sun/tools/attach/VirtualMachine</p>
+</blockquote>
+
+<h2 id="toc_5">1.3 修改防火墙</h2>
+
+<p>Jenkins默认监听8080端口，需修改防火墙允许8080端口。<br/>
+使用以下命令修改iptables，允许8080端口，然后保存并重启iptables服务。</p>
+
+<pre><code class="language-shell"># 修改iptables，修改完成后，:wq保存
+sudo vim /etc/sysconfig/iptables
+
+# 重启iptables服务
+sudo service iptables restart
+</code></pre>
+
+<h2 id="toc_6">1.4 Jenkins启动/停止/重启</h2>
+
+<pre><code class="language-shell"># 分别对应Jenkins的启动、停止、重启
+sudo service jenkins start/stop/restart
+
+# 设置Jenkins开机启动
+sudo chkconfig jenkins on
+</code></pre>
+
+<h1 id="toc_7">2. 配置</h1>
+
+<h2 id="toc_8">2.1 初始化Jenkins</h2>
+
+<ol>
+<li><p>浏览器访问Jenkins，地址<a href="http://ip:8080">http://ip:8080</a><br/>
+Administrator密码，默认位于<code>/var/lib/jenkins/secrets/initialAdminPassword</code>。</p></li>
+<li><p>按照Jenkins提示安装所需的plugins<br/>
+部分插件可能需要梯子才能安装，怎么使用梯子请见3。</p></li>
+<li><p>CentOS安装Shadowsocks客户端<br/>
+前往这里 <a href="http://my.oschina.net/kcw/blog/424636">http://my.oschina.net/kcw/blog/424636</a> 。</p></li>
+<li><p>Add Credentials<br/>
+Kind: SSH Username with private key</p></li>
+</ol>
+
+<h2 id="toc_9">2.2 配置gradle</h2>
+
+<h3 id="toc_10">在CentOS中下载并配置gradle</h3>
+
+<p>下载地址 <a href="http://www.gradle.org/">http://www.gradle.org/</a> ，解压gradle至某路径下，如<code>/usr/local/lib/gradle-1.12</code>，配置环境变量：</p>
+
+<pre><code class="language-shell">sudo vim /etc/profile
+</code></pre>
+
+<p>在该文件底部加上</p>
+
+<pre><code class="language-shell"># gradle
+export GRADLE_HOME=/usr/local/lib/gradle-1.12 # 刚解压的路径
+export PATH=$PATH:$GRADLE_HOME/bin
+</code></pre>
+
+<p>:wq后</p>
+
+<pre><code class="language-shell">source /etc/profile
+</code></pre>
+
+<p><code>echo $GRADLE_HOME</code>检查是否配置成功。</p>
+
+<h3 id="toc_11">在Jenkins中配置gradle</h3>
+
+<ul>
+<li>安装插件（若2.1中已安装则跳过）：<br/>
+Jenkins-&gt;系统管理-&gt;插件管理-&gt;选择“gradle plugin”下载并安装。</li>
+<li>配置gradle home：<br/>
+Jenkins-&gt;系统管理-&gt;Global Tool Configuration-&gt;Gradle安装，配置GRADLE_HOME。
+<img src="media/14927588460540/gradle_home.png" alt="gradle_home"/></li>
+</ul>
+
+<h2 id="toc_12">2.3 设置邮箱（可选）</h2>
+
+<p>Jenkins-&gt;系统设置<br/>
+<img src="media/14927588460540/14932844476691.jpg" alt=""/><br/>
+<img src="media/14927588460540/14932846413455.jpg" alt=""/></p>
+
+<h1 id="toc_13">3. 项目代码调整</h1>
+
+<h2 id="toc_14">3.1 设置自动下载Android SDK</h2>
+
+<p>因各项目buildToolsVersion不尽相同，如果预先在打包服务器上安装各个版本的Android SDK，会比较繁琐且不够灵活。所以采取了在项目gradle文件中添加配置，当不存在Android SDK时自动下载。</p>
+
+<p>修改Project的gradle文件，在buildscript、dependencies中，添加相应代码，如下。</p>
+
+<pre><code class="language-gradle">buildscript {
+    repositories {
+        ...
+        // 方法1，配置后自动下载依赖的Android SDK
+        //maven { url &#39;https://jitpack.io&#39;}
+
+        // 方法2【推荐】，通过自有仓库获取三方依赖库，可利用缓存加快获取依赖包的速度
+        maven {
+            url &#39;http://xxx.xxx.com:8081/artifactory/remote-repos&#39;
+            credentials {
+                username = &#39;xxx&#39;
+                password = &#39;xxx&#39;
+            }
+        }
+    }
+    
+    dependencies {
+        ...
+        // 配置后自动下载依赖的Android SDK
+        classpath &#39;com.github.JakeWharton:sdk-manager-plugin:220bf7a88a7072df3ed16dc8466fb144f2817070&#39;
+    }
+}
+</code></pre>
+
+<p>修改各module的gradle文件，在<strong>首行</strong>添加以下代码。</p>
+
+<pre><code class="language-shell">apply plugin: &#39;android-sdk-manager&#39; // 配置后自动下载依赖的Android SDK
+</code></pre>
+
+<h2 id="toc_15">3.2 为gradlew文件设置可执行权限</h2>
+
+<p>执行<code>./gradlew assembleDebug</code>时，可能会提示以下错误</p>
+
+<pre><code>FATAL: command execution failed
+java.io.IOException: Cannot run program &quot;/var/lib/jenkins/workspace/your-project-name/gradlew&quot; (in directory &quot;/var/lib/jenkins/workspace/your-project-name&quot;): error=13, Permission denied
+</code></pre>
+
+<p>原因是gradlew没有可执行权限。有以下2种解决方法。<strong>【推荐方法1】</strong></p>
+
+<ol>
+<li><p>在将gradlew文件commit到git中时就赋予其可执行权限。参考 <a href="http://blog.lesc.se/2011/11/how-to-change-file-premissions-in-git.html">这篇文章</a>。<br/>
+<strong>注意不能手动在服务器上修改gradlew的权限，因为下次拉取代码时会覆盖该文件，导致修改无效。</strong></p>
+
+<ul>
+<li>类unix系统</li>
+</ul>
+
+<pre><code class="language-shell"># 为文件增加可执行权限
+chmod +x gradlew
+
+git add gradlew
+
+git commit
+</code></pre>
+
+<ul>
+<li>windows系统。<code>git update-index</code>命令详解参见<a href="https://git-scm.com/docs/git-update-index">这里</a>。</li>
+</ul>
+
+<pre><code class="language-shell"># 为文件增加可执行权限
+git update-index --chmod=+x gradlew
+
+git add gradlew
+
+git commit
+</code></pre></li>
+<li><p>在Jenkins中修改项目对应job的配置。如下图，在Invoke Gradle script中勾选“Make gradlew executable”。参考 <a href="http://www.scriptscoop2.com/t/9702c14d56df/linux-jenkins-make-gradlew-executable-option-do-not-make-gradelw-executable.html">这里</a>。<strong>【但实测无效】</strong><br/>
+<img src="media/14927588460540/14931204437942.jpg" alt=""/></p></li>
+</ol>
+
+<h1 id="toc_16">4. 在CentOS服务器上尝试打包</h1>
+
+<p>将项目代码clone到CentOS服务器上后，进入项目根目录，执行以下命令尝试进行编译。</p>
+
+<pre><code class="language-shell">./gradlew assembleDebug --info --stacktrace
+</code></pre>
+
+<p>可能会遇到以下问题</p>
+
+<pre><code class="language-shell">Cannot run program &quot;/home/work/.android-sdk/build-tools/23.0.2/aapt&quot; (in directory &quot;/your/project/path/app&quot;): error=2, No such file or directory
+</code></pre>
+
+<ul>
+<li>原因：aapt（Android Asset Packaging Tool）是32位程序，在64位环境下缺少相应的32位库，导致无法正常使用。</li>
+<li>解决思路：<strong>使用ldd命令或readelf命令检查aapt依赖库，根据结果安装缺失的依赖。</strong></li>
+</ul>
+
+<blockquote>
+<p>延伸：<br/>
+<a href="http://blog.csdn.net/unix21/article/details/8466440">readelf和ldd分析elf文件</a></p>
+</blockquote>
+
+<h2 id="toc_17">解决步骤</h2>
+
+<h3 id="toc_18">1. 使用ldd命令</h3>
+
+<pre><code class="language-shell">ldd ~/.android-sdk/build-tools/23.0.2/aapt
+</code></pre>
+
+<p>结果报以下错误</p>
+
+<pre><code class="language-shell">not a dynamic executable
+</code></pre>
+
+<p>原因：ldd使用标准动态链接库追踪依赖，在64位机器上使用ldd检查32位的ELF文件时，若系统缺失待检查的32位ELF文件所需的动态链接库，则ldd会检查失败。</p>
+
+<blockquote>
+<p>Like one of the comment says - you tried using ldd on 64 bit system to inspect a 32-bit ELF object. ldd uses the standard dynamic linker to trace the dependencies, so if your platform doesn&#39;t have the linker required by the ELF object being inspected, ldd fails. Readelf and objdump are more robust in these situations.</p>
+
+<p>参考<a href="http://stackoverflow.com/questions/16807560/ldd-doesnt-work-on-dynamically-linked-binary">StackOverflow上的回答</a></p>
+</blockquote>
+
+<h3 id="toc_19">2. 使用readelf命令</h3>
+
+<p>根据上一步分析的结论，我们使用readelf命令分析一下aapt。</p>
+
+<pre><code class="language-shell">readelf -d ~/.android-sdk/build-tools/23.0.2/aapt
+</code></pre>
+
+<p>结果如下：</p>
+
+<p><img src="media/14927588460540/readelf.png" alt="readelf"/></p>
+
+<h3 id="toc_20">3. 查找缺失依赖并安装</h3>
+
+<h4 id="toc_21">安装glibc库</h4>
+
+<p>首先安装32位的C运行库，glibc。</p>
+
+<pre><code class="language-shell"># 查找glibc
+sudo yum search glibc
+</code></pre>
+
+<p><img src="media/14927588460540/glibc.png" alt="glib"/></p>
+
+<pre><code class="language-shell"># 根据上面的查找结果安装相应32位版本
+sudo yum install glibc.i686
+</code></pre>
+
+<p>安装完成后，再次尝试使用ldd检查aapt依赖库。</p>
+
+<pre><code class="language-shell">ldd ~/.android-sdk/build-tools/23.0.2/aapt
+</code></pre>
+
+<p><img src="media/14927588460540/ldd_aapt.png" alt="ldd_aapt"/></p>
+
+<p><strong>可以看到，现在还缺失libz.so.1、libgcc_s.so.1依赖，google之后，知道这2个依赖分别对应zlib库、libgcc库。</strong></p>
+
+<p>同时，通过<code>gradlew assembleDebug</code>编译时，报的下述错误也能够证实上述结论。<br/>
+<img src="media/14927588460540/libz.png" alt="libz"/></p>
+
+<h4 id="toc_22">安装zlib库</h4>
+
+<pre><code class="language-shell"># 查找zlib
+sudo yum search zlib
+</code></pre>
+
+<p><img src="media/14927588460540/14931144531522.jpg" alt=""/></p>
+
+<pre><code class="language-shell"># 根据上面的查找结果安装相应32位版本
+sudo yum install zlib.i686
+</code></pre>
+
+<p><img src="media/14927588460540/zlib.png" alt="zlib"/></p>
+
+<p>此时，通过<code>gradlew assembleDebug</code>编译时，报的错误变为以下内容。<br/>
+<img src="media/14927588460540/libgcc_missing.png" alt="libgcc_missing"/></p>
+
+<p>接下来我们要安装libgcc依赖。</p>
+
+<h4 id="toc_23">安装libgcc库</h4>
+
+<pre><code class="language-shell"># 查找libgcc
+sudo yum search libgcc
+</code></pre>
+
+<p><img src="media/14927588460540/libgcc.png" alt="libgcc"/></p>
+
+<pre><code class="language-shell"># 根据上面的查找结果安装相应32位版本
+sudo yum install libgcc.i686
+</code></pre>
+
+<p>可能会遇到下面的错误。错误描述得很清楚，我们要安装32位的libgcc（libgcc-4.4.7-18.el6.i686），而系统当前已经安装了一个其他版本的64位libgcc（libgcc-4.4.7-17.el6.x86_64），2个版本不匹配。<br/>
+<img src="media/14927588460540/14931754172751.jpg" alt=""/></p>
+
+<p>执行以下命令查看已安装版本、未安装版本的libgcc。</p>
+
+<pre><code class="language-shell">sudo yum list libgcc*
+</code></pre>
+
+<p>结果如下，跟上面的错误描述一致。<br/>
+<img src="media/14927588460540/14931755161216.jpg" alt=""/></p>
+
+<p>所以，我们需要先升级当前64位版本的libgcc，然后再安装32位版本的libgcc，执行以下命令：</p>
+
+<pre><code class="language-shell"># 升级当前安装的libgcc
+sudo yum update libgcc
+
+# 安装32位版本的libgcc
+sudo yum install libgcc.i686
+</code></pre>
+
+<h3 id="toc_24">4. 再次尝试打包</h3>
+
+<pre><code class="language-shell">gradle assembleDebug --info --stacktrace
+</code></pre>
+
+<p>可能会报以下错误：</p>
+
+<pre><code class="language-shell">The type android.support.v4.app.BaseFragmentActivityHoneycomb cannot be resolved. It is indirectly referenced from required .class files
+</code></pre>
+
+<p>这个错误是说某个依赖的Android库找不到，可以先clean一下再打包。</p>
+
+<pre><code class="language-shell">gradle clean assembleDebug --info --stacktrace
+</code></pre>
+
+<p>至此，现在应该能够在CentOS上正常打包了。</p>
+
+<h1 id="toc_25">5. 在Jenkins中新建打包项目</h1>
+
+<p>以我所做的某客户端为例，配置如下</p>
+
+<h2 id="toc_26">General</h2>
+
+<p><img src="media/14927588460540/14932851944177.jpg" alt=""/><br/>
+<img src="media/14927588460540/14932881837493.jpg" alt=""/><br/>
+<img src="media/14927588460540/14932885558510.jpg" alt=""/></p>
+
+<h2 id="toc_27">源码管理</h2>
+
+<p><img src="media/14927588460540/14932886809898.jpg" alt=""/></p>
+
+<h2 id="toc_28">构建触发器，构建环境</h2>
+
+<p><img src="media/14927588460540/14936861627610.jpg" alt=""/></p>
+
+<h2 id="toc_29">构建环境</h2>
+
+<p><img src="media/14927588460540/%E8%AF%84%E4%BC%B0%E5%B8%88%E6%9E%84%E5%BB%BA%E7%8E%AF%E5%A2%83.png" alt="构建环境"/></p>
+
+<h2 id="toc_30">构建</h2>
+
+<p><img src="media/14927588460540/14932888692239.jpg" alt=""/><br/>
+<img src="media/14927588460540/14932889022838.jpg" alt=""/><br/>
+<img src="media/14927588460540/14932890855315.jpg" alt=""/><br/>
+<img src="media/14927588460540/14932891853994.jpg" alt=""/></p>
+
+<h2 id="toc_31">构建后操作</h2>
+
+<p><img src="media/14927588460540/14932892662145.jpg" alt=""/><br/>
+<img src="media/14927588460540/14936563481499.jpg" alt=""/></p>
+
+<blockquote>
+<p>若增加构建后步骤“Publish build status to GitLab commit (GitLab 8.1+ required)”，则会跟上面选择的Merge before build产生冲突。因为在本地merge产生的commit_id在远端的repository中不存在，jenkins在尝试向gitlab推送构建状态时会因找不到相应的commit_id而失败。所以这里要去掉Publish build status to GitLab commit选项。参考<a href="https://github.com/jenkinsci/gitlab-plugin/issues/325">这里</a>。</p>
+</blockquote>
+
+<p>注意配置邮件时，点右下角的“Advanced Settings”<br/>
+<img src="media/14927588460540/%E9%85%8D%E7%BD%AE%E9%82%AE%E4%BB%B6advanced_settings.png" alt="配置邮件advanced_settings"/></p>
+
+<h1 id="toc_32">6. 其他问题</h1>
+
+<ul>
+<li><a href="http://www.jianshu.com/p/5eebd3c609d6">如何解决Unsupported major.minor version 52.0问题？</a></li>
+<li><a href="14931812922825.html">BuildTools更新到24.0.3遇到的问题</a></li>
+</ul>
+
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[【篇四】通过Jenkins打包ReactNative APP]]></title>
+    <link href="http://www.felixyan.com/14927566576566.html"/>
+    <updated>2017-04-21T14:37:37+08:00</updated>
+    <id>http://www.felixyan.com/14927566576566.html</id>
+    <content type="html"><![CDATA[
+<p>系统版本：CentOS release 6.7 (Final)。<br/>
+待打包的APP：原生+ReactNative的混合Android APP。</p>
+
+<span id="more"></span><!-- more -->
+
+<h2 id="toc_0">1. CentOS下安装ReactNative依赖</h2>
+
+<pre><code class="language-shell">sudo su
+
+# 安装node环境
+curl --silent --location https://rpm.nodesource.com/setup_6.x | bash -
+
+# 安装React Native CLI
+npm install -g react-native-cli
+</code></pre>
+
+<h2 id="toc_1">2. 打包流程</h2>
+
+<ol>
+<li><p>若项目根目录下没有node_modules目录，则执行以下命令</p>
+
+<pre><code class="language-shell"> # 根据当前目录下的package.json文件安装所需依赖
+ npm install
+</code></pre></li>
+<li><p>打js bundle文件</p>
+
+<pre><code class="language-shell"># 生成inde.android.js、index.android.bundle文件，并复制到相应目录
+react-native bundle --platform android --dev false --entry-file index.android.js --bundle-output app/src/main/assets/index.android.bundle --assets-dest app/src/main/res/
+</code></pre></li>
+<li><p>打apk包</p>
+
+<pre><code class="language-shell"># 与打原生的apk包相同，assembleDebug或assembleRelease
+gradlew assembleRelease
+</code></pre></li>
+</ol>
+
+<h2 id="toc_2">3. 集成到Jenkins打包流程</h2>
+
+<p>根据上一步的打包流程，编写shell脚本，并将其置于Jenkins中项目Job的“构建”环节第一步。</p>
+
+<p>脚本中在项目所在目录的上一级目录新建了default_node_modules目录，用于存放生成的node_modules副本，以便下一次打包时可以直接复制使用而不用执行npm install，以节省打包时间。同时在打包参数中新增了ReinitNodeModules选项，打包时勾选此选项可以强制本次打包重新初始化node_modules。</p>
+
+<pre><code class="language-shell"># 【ReactNative相关】
+
+# 初始化node_modules
+
+# 默认node_modules目录
+default_node_modules_dir=&quot;${PWD}/../default_node_modules&quot;
+
+# 若打包时勾选了ReinitNodeModules选项，或默认node_modules目录不存在，
+# 则需要通过npm重新初始化node_modules
+if [ ${ReinitNodeModules} == true ] || [ ! -d $default_node_modules_dir ]
+then
+    # 初始化node_modules。这里使用了taobao的镜像
+    npm --registry https://registry.npm.taobao.org install
+    
+    # 若默认node_modules目录存在，则删除之
+    if [ -d $default_node_modules_dir ]
+    then
+        rm -rf $default_node_modules_dir
+    fi
+    
+    # 将当前目录下新初始化的node_modules复制到默认node_modules目录
+    cp -rf ./node_modules $default_node_modules_dir
+else
+    # 若不需要重新初始化node_modules，则检查当前目录下是否存在node_modules目录，
+    # 若其不存在，则需要从默认node_modules目录下复制过来
+    if [ ! -d &#39;./node_modules&#39; ]
+    then
+        cp -rf $default_node_modules_dir ./node_modules
+    fi
+fi
+
+# 打js bundle文件
+react-native bundle --platform android --dev false --entry-file index.android.js --bundle-output app/src/main/assets/index.android.bundle --assets-dest app/src/main/res/
+</code></pre>
+
+<h2 id="toc_3">4. 参考</h2>
+
+<ul>
+<li><a href="https://facebook.github.io/react-native/docs/getting-started.html">ReactNative, Getting Started</a></li>
+<li><a href="https://nodejs.org/en/download/package-manager/#enterprise-linux-and-fedora">Installing Node.js via package manager</a></li>
+<li><a href="https://github.com/nodesource/distributions">Node.js and io.js Binary Distributions</a></li>
+<li><a href="https://facebook.github.io/react-native/docs/integration-with-existing-apps.html#creating-a-release-build-in-android-studio">ReactNative, Creating a release build in Android Studio</a></li>
+<li><a href="http://www.cnblogs.com/chyingp/p/npm.html">NPM小结</a></li>
+</ul>
+
+]]></content>
+  </entry>
   
   <entry>
     <title type="html"><![CDATA[Android多用户及sharedUserId]]></title>
@@ -2037,315 +2845,6 @@ scanner.close();
 <p><a href="http://www.cnblogs.com/dolphin0520/p/3910667.html">Java多线程基础：进程和线程之由来</a> <br/>
 <a href="http://www.cnblogs.com/dolphin0520/p/3913517.html">Java并发编程：如何创建线程？</a><br/>
 <a href="http://www.cnblogs.com/dolphin0520/p/3920357.html">Java并发编程：Thread类的使用</a></p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[并发容器、阻塞队列]]></title>
-    <link href="http://www.felixyan.com/14869139713567.html"/>
-    <updated>2017-02-12T23:39:31+08:00</updated>
-    <id>http://www.felixyan.com/14869139713567.html</id>
-    <content type="html"><![CDATA[
-<h2 id="toc_0">1. 并发容器</h2>
-
-<h3 id="toc_1">1.1 并发容器种类</h3>
-
-<p>jdk 1.5 引入了并发容器，同之前的同步容器相比，主要解决了2个问题：<br/>
-1. 根据具体场景，尽量避免synchronized，提供并发性<br/>
-2. 定义了一些并发安全的复合操作，保证并发环境下的迭代不会出错（但未必每次看到的都是最新的数据）</p>
-
-<span id="more"></span><!-- more -->
-
-<ul>
-<li><strong>ConcurrentHashMap：</strong>替代同步Map（Collections.synchronized(new HashMap())），分段锁；增加了原子复合操作，如putIfAbsent()、replace()；</li>
-<li><strong>CopyOnWriteArrayList：</strong>替代List；迭代过程保证不出错，除了加锁，另一种方法是克隆容器对象；</li>
-<li>CopyOnWriteArraySet：替代Set；</li>
-<li>ConcurrentLinkedQueue：先进先出队列，非阻塞；</li>
-<li>ConcurrentSkipListMap：替代SoredMap（Collections.synchronizedMap(new TreeMap())）；</li>
-<li>ConcurrentSkipListSet：替代SoredSet（Collections.synchronizedSet(new TreeMap())）；</li>
-</ul>
-
-<h3 id="toc_2">1.2 ConcurrentHashMap</h3>
-
-<h4 id="toc_3">ConcurrentHashMap内部结构</h4>
-
-<p><img src="http://pic.yupoo.com/goldendoc/Ba4GCFe1/nuEZ0.png?_=3932905" alt="ConcurrentHashMap结构"/></p>
-
-<p>结构：Segment数组+HashEntry链表数组，Segment是一种可重入锁ReentrantLock。<br/>
-读操作：定位1个元素需要2次Hash操作，第一次Hash定位到Segment，第二次Hash定位到元素所在链表的头部。<br/>
-写操作：只对元素所在的Segment加锁，如需扩容，则只对Segment扩容。</p>
-
-<p>Segment结构。</p>
-
-<pre><code class="language-java">static final class Segment&lt;K,V&gt; extends ReentrantLock implements Serializable {
-    transient volatile int count; // Segment中元素的数量
-    transient int modCount; // 对table大小造成影响的操作数量（如put、remove）
-    transient int threshold; // 阈值，Segment中元素超过该阈值后会对Segment扩容
-    transient volatile HashEntry&lt;K,V&gt;[] table; // 链表数组，每个元素代表了一个链表的头部
-    final float loadFactor; // 负载因子，用于确定threshold
-}
-</code></pre>
-
-<p>HashEntry结构。</p>
-
-<pre><code class="language-java">static final class HashEntry&lt;K,V&gt; {
-    final K key;
-    final int hash;
-    volatile V value;
-    final HashEntry&lt;K,V&gt; next;
-}
-</code></pre>
-
-<h4 id="toc_4">初始化</h4>
-
-<p>Segment、HashEntry的个数都是2的n次方个，便于执行Hash计算。</p>
-
-<h4 id="toc_5">get操作</h4>
-
-<p>get操作的高效之处在于整个get过程不需要加锁，除非读到的值是空的才会加锁重读。不加锁的原因是get方法中使用的共享变量都是volatile的，保证线程间的可见性。</p>
-
-<p>ConcurrentHashMap的get方法、segmentFor方法。</p>
-
-<pre><code class="language-java">public V get(Object key) {
-  int hash = hash(key.hashCode()); // 对hashCode再哈希，为了减少哈希冲突
-  return segmentFor(hash).get(key, hash);
-}
-</code></pre>
-
-<pre><code class="language-java">final Segment&lt;K,V&gt; segmentFor(int hash) {
-    return segments[(hash &gt;&gt;&gt; segmentShift) &amp; segmentMask];
-}
-</code></pre>
-
-<p>Segment的get方法。</p>
-
-<pre><code class="language-java">V get(Object key, int hash) {
-    if (count != 0) { // read-volatile
-        HashEntry&lt;K,V&gt; e = getFirst(hash);
-        while (e != null) {
-            if (e.hash == hash &amp;&amp; key.equals(e.key)) {
-                V v = e.value;
-                if (v != null)
-                    return v;
-                return readValueUnderLock(e); // recheck 读到空值，加锁重读
-            }
-            e = e.next;
-        }
-    }
-    return null;
-}
-</code></pre>
-
-<h4 id="toc_6">put操作</h4>
-
-<p>需要加锁完成。如果Segment中的元素数量超过了阈值，需要对Segment扩容，再进行rehash。如果找到要更新的元素，则更新其value，否则生成一个新的HashEntry加到Segment头部。</p>
-
-<h4 id="toc_7">remove操作</h4>
-
-<p>先确定要删除的元素位置，不过删除的方式不是将待删除元素前面一个元素的next指向后一个元素，因为HashEntry中的next是final的，一经赋值不可修改。所以定位到待删除元素的位置后，将待删除元素前的元素复制一遍，然后一个个重新接到链表上。</p>
-
-<p><img src="http://pic.yupoo.com/goldendoc/Ba3OfBv8/medish.jpg?_=3932905" alt="remove元素前"/></p>
-
-<p>如上图，现在要删除元素3，删除后链表如下图。<br/>
-<img src="http://pic.yupoo.com/goldendoc/Ba3OfPQE/medish.jpg?_=3932905" alt="remove元素后"/></p>
-
-<pre><code class="language-java">// All entries following removed node can stay
-// in list, but all preceding ones need to be
-// cloned.
-++modCount;
-HashEntry&lt;K,V&gt; newFirst = e.next;
-for (HashEntry&lt;K,V&gt; p = first; p != e; p = p.next)
-    newFirst = new HashEntry&lt;K,V&gt;(p.key, p.hash, newFirst, p.value);
-tab[index] = newFirst;
-</code></pre>
-
-<h4 id="toc_8">size操作</h4>
-
-<p>不加锁统计2遍各个Segment的大小，如果2次统计modCount没有发生变化，则返回第一次统计值，否则加锁统计一次所有Segment的大小。</p>
-
-<h4 id="toc_9">参考</h4>
-
-<p><a href="http://www.cnblogs.com/dolphin0520/p/3932905.html">Java并发编程：并发容器之ConcurrentHashMap（转载）</a><br/>
-<a href="http://ifeve.com/ConcurrentHashMap/">聊聊并发（四）深入分析ConcurrentHashMap</a></p>
-
-<h3 id="toc_10">1.3 CopyOnWriteArrayList</h3>
-
-<p>读的时候不加锁，写的时候加锁，用于读多写少的并发场景。</p>
-
-<p>回顾2个常识：<br/>
-1. Java中“=”操作只是将引用与对象关联，线程A将线程B中的引用指向另一个对象，他们之间不会发生ConcurrentModificationException。<br/>
-2. Java中2个引用指向同一个对象，若引用A指向另一个对象，则不会影响引用B，引用B仍然指向原来的对象。</p>
-
-<p><strong>复制数组使用的是Arrays.copyOf方法</strong>，其内部调用的System.arraycopy的native方法。对于数组元素为引用类型的，则只在新数组中将元素引用指向旧数组相应的元素；对于非引用类型，则会将旧数组中的元素复制到新数组。参考<a href="https://stackoverflow.com/questions/18351726/does-arrays-copyof-produce-a-shallow-or-a-deep-copy#38104094">StackOverflow上的回答</a></p>
-
-<p>注意点：<br/>
-1. 减少写时扩容开销，根据实际需要初始化CopyOnWriteMap的大小<br/>
-2. 使用批量添加，因为每次添加容器都会进行复制</p>
-
-<p>缺点：<br/>
-1. 内存占用问题<br/>
-2. 数据一致性问题</p>
-
-<h4 id="toc_11">参考</h4>
-
-<p><a href="http://www.cnblogs.com/dolphin0520/p/3938914.html">Java并发编程：并发容器之CopyOnWriteArrayList（转载）</a><br/>
-<a href="http://m.blog.csdn.net/article/details?id=8494675">java CopyOnWriteArrayList的使用</a></p>
-
-<h2 id="toc_12">2. 阻塞队列</h2>
-
-<h3 id="toc_13">非阻塞队列</h3>
-
-<p>PriorityQueue、LinkedList。</p>
-
-<p>主要方法：<br/>
-add(E e)：插入队尾。成功，返回true，失败（队列已满），抛异常；<br/>
-remove()：移除队首元素。成功，返回true，失败（队列空），抛异常；<br/>
-<strong>offer(E e)：</strong>插入队尾。成功，返回true，失败（队列已满），返回false；<br/>
-<strong>poll()：</strong>移除并获取队首元素。成功，返回队首元素，失败返回null；<br/>
-<strong>peek：</strong>获取队首元素。成功，返回队首元素，失败返回null。</p>
-
-<p>建议使用offer、poll、peek，因为可以根据返回值判断操作是否成功。非阻塞队列中的方法都没有进行同步措施。</p>
-
-<h3 id="toc_14">阻塞队列</h3>
-
-<p>ArrayBlockingQueue：基于数组，先进先出，有界。创建时需指定容量大小，并且可指定公平性非公平性。<br/>
-LinkedBlockingQueue：基于链表，先进先出，有界。创建时若不指定容量大小，则默认大小为Integer.MAX_VALUE。<br/>
-PriorityBlockingQueue：按照元素优先级排序，并按照优先级出队。无界（即容量无上限）。<br/>
-DelayQueue：基于PriorityQueue，延时阻塞队列，无界。无界阻塞队列，插入数据时永远不会被阻塞，只有取数据时才会被阻塞。</p>
-
-<p>主要方法：<br/>
-包含了非阻塞队列的5个方法，且均进行了同步措施。除此之外，还提供了以下4个方法：<br/>
-<strong>put(E e)：</strong>向队尾存入元素，若队列满，则等待；<br/>
-<strong>take()：</strong>取队首元素，若队列空，则等待；<br/>
-<strong>offer(E e, long timeout, TimeUnit unit)：</strong>向队尾存入元素，若队列满，则等待一定时间，若超时仍未成功，则返回false，否则返回true；<br/>
-<strong>poll(long timeout, TimeUnit unit)：</strong>取队首元素，若队列空，则等待一定时间，若超时仍未取到，则返回null，否则返回取得的元素。</p>
-
-<h3 id="toc_15">阻塞队列原理</h3>
-
-<p>以ArrayBlockingQueue为例，</p>
-
-<pre><code class="language-java">public class ArrayBlockingQueue&lt;E&gt; extends AbstractQueue&lt;E&gt;
-implements BlockingQueue&lt;E&gt;, java.io.Serializable {
- 
-    private static final long serialVersionUID = -817911632652898426L;
-     
-    /** The queued items  */
-    private final E[] items;
-    /** items index for next take, poll or remove */
-    private int takeIndex;
-    /** items index for next put, offer, or add. */
-    private int putIndex;
-    /** Number of items in the queue */
-    private int count;
-     
-    /*
-    * Concurrency control uses the classic two-condition algorithm
-    * found in any textbook.
-    */
-     
-    /** Main lock guarding all access */
-    private final ReentrantLock lock;
-    /** Condition for waiting takes */
-    private final Condition notEmpty;
-    /** Condition for waiting puts */
-    private final Condition notFull;
-}
-</code></pre>
-
-<h3 id="toc_16">参考</h3>
-
-<p><a href="http://www.cnblogs.com/dolphin0520/p/3932906.html">Java并发编程：阻塞队列</a></p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[ConcurrentModificationException异常]]></title>
-    <link href="http://www.felixyan.com/14868914180518.html"/>
-    <updated>2017-02-12T17:23:38+08:00</updated>
-    <id>http://www.felixyan.com/14868914180518.html</id>
-    <content type="html"><![CDATA[
-<h2 id="toc_0">原因</h2>
-
-<p>AbstractList类的方法checkForComodification()如下：</p>
-
-<pre><code class="language-java">final void checkForComodification() {
-    if (modCount != expectedModCount)
-    throw new ConcurrentModificationException();
-}
-</code></pre>
-
-<span id="more"></span><!-- more -->
-
-<p>其中modCount为AbstractList的成员变量，表示对list的修改次数，每次调用ArrayList的add()、remove()方法时该值+1；而expectedModCount为AbstractList的内部类Itr的成员变量，表示对list修改次数的期望值，初始时，二者值相等。</p>
-
-<p>发生该异常的原因是调用list.remove()导致modCount与expectedModCount不相等。</p>
-
-<h2 id="toc_1">单线程环境下解决办法</h2>
-
-<p>调用Itr中的remove()方法，该方法实际上也是调用的list.remove()，但多了expectedModCount = modCount的操作。</p>
-
-<h2 id="toc_2">多线程环境下解决办法</h2>
-
-<p>将ArrayList改为Vector并不能解决问题，因为Vector继承自AbstractList，所以通过Iterator来访问容器时，并不需要获取锁。因此会出现多个线程同时操作一个容器的情况，可能会导致某个线程中的expectedModCount与modCount不相等。</p>
-
-<p>2种解决办法：<br/>
-1. 通过Iterator迭代的时候使用synchronized或lock进行同步；<br/>
-2. 使用并发容器CopyOnWriteArrayList代替ArrayList和Vector。</p>
-
-<h2 id="toc_3">参考</h2>
-
-<p><a href="http://www.cnblogs.com/dolphin0520/p/3933551.html">Java ConcurrentModificationException异常原因和解决方法</a></p>
-
-]]></content>
-  </entry>
-  
-  <entry>
-    <title type="html"><![CDATA[同步容器]]></title>
-    <link href="http://www.felixyan.com/14868881967335.html"/>
-    <updated>2017-02-12T16:29:56+08:00</updated>
-    <id>http://www.felixyan.com/14868881967335.html</id>
-    <content type="html"><![CDATA[
-<h2 id="toc_0">线程安全相关类、并发工具</h2>
-
-<p>同步容器、并发容器、阻塞队列、Synchronizer（如CountDownLatch）。</p>
-
-<span id="more"></span><!-- more -->
-
-<h2 id="toc_1">集合容器框架</h2>
-
-<p>Java集合容器框架，4大类别（均为接口）：List、Set、Queue、Map。<br/>
-前3者继承了顶级接口Collection，Map本身是一个顶级接口。</p>
-
-<p>ArrayList：实现了List。<br/>
-<strong>LinkedList：</strong>双向链表，实现了List、Dequeue。<br/>
-HashSet：实现了Set。<br/>
-<strong>Dequeue：</strong>双向队列，允许队首、队尾进行入队出队操作，继承了Queue。<br/>
-PriorityQueue：实现了Queue。</p>
-
-<h2 id="toc_2">同步容器</h2>
-
-<h3 id="toc_3">类别</h3>
-
-<ol>
-<li>Vector（类似ArrayList）、<strong>Stack（继承Vector）</strong>、HashTable（类似HashMap）</li>
-<li>Collections静态工程方法创建的类，如synchronizedCollection、synchronizedList等</li>
-</ol>
-
-<h3 id="toc_4">缺陷</h3>
-
-<ol>
-<li>性能问题。为解决该问题，Java 1.5提供了并发容器。</li>
-<li>仍存在线程不安全。一个线程vector.get(i)前，另一个线程vector.remove(i)，造成数组下标越界。</li>
-<li>ConcurrentModificationException。</li>
-</ol>
-
-<h3 id="toc_5">参考</h3>
-
-<p><a href="http://www.cnblogs.com/dolphin0520/p/3933404.html">http://www.cnblogs.com/dolphin0520/p/3933404.html</a><br/>
-《深入理解Java虚拟机》<br/>
-《Java并发编程实战》</p>
 
 ]]></content>
   </entry>
